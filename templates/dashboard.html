@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Reading Teams - Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .nav-tabs {
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        .nav-tabs a {
+            text-decoration: none;
+            color: #666;
+            padding: 10px 20px;
+            display: inline-block;
+        }
+        .nav-tabs a.active {
+            border: 1px solid #ddd;
+            border-bottom: none;
+            background: #fff;
+            color: #333;
+            border-radius: 4px 4px 0 0;
+        }
+        .team-card {
+            border: 1px solid #ccc;
+            margin: 10px;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .team-points {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .team-card h3 {
+            margin-top: 0;
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="nav-tabs">
+        <a href="/roster">Roster</a>
+        <a href="/dashboard" class="active">Dashboard</a>
+    </div>
+
+    <h1>Team Standings</h1>
+    
+    {% for team_name, team in teams.items() %}
+    <div class="team-card">
+        <h3 style="background-color: {{ team.color }}">{{ team_name }}</h3>
+        <p class="team-points">Total Points: {{ team.points }}</p>
+        <h4>Team Members:</h4>
+        <ul>
+        {% for member in team.members %}
+            <li>{{ member.name }} - {{ member.sections_completed }} sections completed ({{ member.points }} points)</li>
+        {% endfor %}
+        </ul>
+    </div>
+    {% endfor %}
+</body>
+</html> 

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Reading Teams - Roster</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .nav-tabs {
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        .nav-tabs a {
+            text-decoration: none;
+            color: #666;
+            padding: 10px 20px;
+            display: inline-block;
+        }
+        .nav-tabs a.active {
+            border: 1px solid #ddd;
+            border-bottom: none;
+            background: #fff;
+            color: #333;
+            border-radius: 4px 4px 0 0;
+        }
+        .add-form {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .add-form input, .add-form select {
+            padding: 8px;
+            margin-right: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .add-form button {
+            padding: 8px 16px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .add-form button:hover {
+            background: #45a049;
+        }
+        .team-section {
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .team-header {
+            background: #f5f5f5;
+            padding: 15px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .team-header:hover {
+            background: #eee;
+        }
+        .team-header h2 {
+            margin: 0;
+            font-size: 1.2em;
+        }
+        .team-content {
+            display: none;
+            padding: 15px;
+        }
+        .team-content.active {
+            display: block;
+        }
+        .roster-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .roster-table th, .roster-table td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        .roster-table th {
+            background-color: #f9f9f9;
+        }
+        .toggle-icon {
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        .member-count {
+            color: #666;
+            font-size: 0.9em;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="nav-tabs">
+        <a href="/roster" class="active">Roster</a>
+        <a href="/dashboard">Dashboard</a>
+    </div>
+
+    <h1>Team Roster</h1>
+    
+    <div class="add-form">
+        <h2>Add New Student</h2>
+        <form action="/add_student" method="POST">
+            <input type="text" name="name" placeholder="Full Name" required>
+            <select name="team" required>
+                <option value="">Select Team</option>
+                {% for team in teams %}
+                <option value="{{ team }}">{{ team }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit">Add Student</button>
+        </form>
+    </div>
+
+    {% for team_name, members in students_by_team.items() %}
+    <div class="team-section">
+        <div class="team-header" onclick="toggleTeam(this)">
+            <div>
+                <h2>{{ team_name }} <span class="member-count">({{ members|length }} members)</span></h2>
+            </div>
+            <span class="toggle-icon">+</span>
+        </div>
+        <div class="team-content">
+            <table class="roster-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for student in members %}
+                    <tr>
+                        <td>{{ student.Name }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endfor %}
+
+    <script>
+        function toggleTeam(header) {
+            const content = header.nextElementSibling;
+            const icon = header.querySelector('.toggle-icon');
+            
+            if (content.classList.contains('active')) {
+                content.classList.remove('active');
+                icon.textContent = '+';
+            } else {
+                content.classList.add('active');
+                icon.textContent = '−';
+            }
+        }
+    </script>
+</body>
+</html> 
