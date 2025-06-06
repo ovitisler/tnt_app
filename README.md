@@ -39,4 +39,7 @@ The following environment variables need to be set:
 - `SHEET_NAME`: The name of your Google Sheet (default: 'TNT_App_Data')
 
 ## Deployment
-This application is configured for deployment on Render. See deployment instructions in DEPLOYMENT.md. 
+This application is configured for deployment on Render. See deployment instructions in DEPLOYMENT.md.
+
+## License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 
