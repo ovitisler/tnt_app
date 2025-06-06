@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, jsonify
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
@@ -113,6 +113,25 @@ def add_student():
     roster_sheet.append_row(row)
     
     return redirect(url_for('roster'))
+
+@app.route('/delete_student', methods=['POST'])
+def delete_student():
+    data = request.get_json()
+    name = data.get('name')
+    
+    if not name:
+        return jsonify({'error': 'Name is required'}), 400
+    
+    try:
+        # Find the student's row
+        cell = roster_sheet.find(name)
+        if cell:
+            roster_sheet.delete_rows(cell.row)
+            return jsonify({'message': 'Student deleted successfully'}), 200
+        else:
+            return jsonify({'error': 'Student not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)

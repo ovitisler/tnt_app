@@ -153,6 +153,20 @@
             margin-left: 10px;
         }
 
+        .delete-btn {
+            padding: 6px 12px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+        
+        .delete-btn:hover {
+            background: #c82333;
+        }
+
         @media (max-width: 768px) {
             body {
                 display: block;
@@ -259,12 +273,16 @@
                     <thead>
                         <tr>
                             <th>Name</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for student in members %}
                         <tr>
                             <td>{{ student.Name }}</td>
+                            <td>
+                                <button class="delete-btn" onclick="deleteStudent('{{ student.Name }}')">Delete</button>
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -285,6 +303,24 @@
             } else {
                 content.classList.add('active');
                 icon.textContent = '−';
+            }
+        }
+
+        function deleteStudent(name) {
+            if (confirm('Are you sure you want to delete ' + name + '?')) {
+                fetch('/delete_student', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ name: name })
+                }).then(response => {
+                    if (response.ok) {
+                        window.location.reload();
+                    } else {
+                        alert('Failed to delete student');
+                    }
+                });
             }
         }
     </script>
