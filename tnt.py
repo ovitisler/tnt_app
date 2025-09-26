@@ -9,6 +9,10 @@ from urllib.parse import unquote
 
 app = Flask(__name__)
 
+@app.route('/static/<path:filename>')
+def static_files(filename):
+    return app.send_static_file(filename)
+
 def get_google_creds():
     """Get Google credentials either from file or environment variable"""
     if 'GOOGLE_SHEETS_CREDS' in os.environ:
