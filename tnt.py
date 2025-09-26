@@ -226,13 +226,71 @@ def edit_kid_attendance():
     except Exception as e:
         return redirect(url_for('attendance'))
 
+@app.route('/attendance/<int:day_index>/team/<team_name>/checkin')
+def checkin_form(day_index, team_name):
+    try:
+        # Get attendance schedule data
+        attendance_schedule_sheet = spreadsheet.worksheet('Attendance Schedule')
+        schedule_data = attendance_schedule_sheet.get_all_records()
+        
+        # Get team kids from Master Roster
+        roster_data = roster_sheet.get_all_records()
+        team_kids = [row['Name'] for row in roster_data if row.get('Group', '').lower() == team_name.lower()]
+        
+        if 0 <= day_index < len(schedule_data):
+            day_data = schedule_data[day_index]
+            return render_template('checkin_form.html',
+                                 day_data=day_data,
+                                 day_index=day_index,
+                                 team_name=team_name,
+                                 team_kids=team_kids,
+                                 schedule_data=schedule_data)
+        else:
+            return redirect(url_for('attendance'))
+    except Exception as e:
+        return redirect(url_for('attendance'))
+
+@app.route('/submit_checkin', methods=['POST'])
+def submit_checkin():
+    try:
+        # Get form data
+        name = request.form.get('name')
+        date = request.form.get('date')
+        team = request.form.get('team')
+        day_index = request.form.get('day_index')
+        
+        # Get attendance entries sheet and headers
+        attendance_entries_sheet = spreadsheet.worksheet('Attendance Entries RAW')
+        headers = attendance_entries_sheet.row_values(1)
+        
+        # Create data mapping
+        data_map = {
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'Name': name,
+            'Team': team,
+            'Date': date,
+            'Present': True if 'present' in request.form else False,
+            'Has Bible': True if 'has_bible' in request.form else False,
+            'Wearing Shirt?': True if 'wearing_shirt' in request.form else False,
+            'Has Book?': True if 'has_book' in request.form else False,
+            'Did Homework?': True if 'did_homework' in request.form else False,
+            'Has Dues?': True if 'has_dues' in request.form else False
+        }
+        
+        # Build row in correct order based on headers
+        new_row = []
+        for header in headers:
+            new_row.append(data_map.get(header, ''))
+        
+        attendance_entries_sheet.append_row(new_row, value_input_option='USER_ENTERED')
+        
+        return redirect(f'/attendance/{day_index}/team/{team}')
+    except Exception as e:
+        return redirect(url_for('attendance'))
+
 @app.route('/progress')
 def progress():
     return render_template('progress.html')
-
-
-
-
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)
