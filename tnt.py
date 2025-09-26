@@ -36,6 +36,28 @@ def find_column_index(worksheet, header_name):
     except ValueError:
         return None
 
+def dates_match(date1, date2):
+    """Check if two dates match, handling different formats"""
+    if not date1 or not date2:
+        return False
+    
+    try:
+        # Parse ISO format (2025-09-17T00:00:00.000Z)
+        if 'T' in str(date1):
+            parsed_date1 = datetime.fromisoformat(str(date1).replace('Z', '+00:00')).date()
+        else:
+            # Parse readable format (September 17, 2025)
+            parsed_date1 = datetime.strptime(str(date1), '%B %d, %Y').date()
+        
+        if 'T' in str(date2):
+            parsed_date2 = datetime.fromisoformat(str(date2).replace('Z', '+00:00')).date()
+        else:
+            parsed_date2 = datetime.strptime(str(date2), '%B %d, %Y').date()
+        
+        return parsed_date1 == parsed_date2
+    except:
+        return str(date1) == str(date2)
+
 @app.route('/')
 def home():
     return render_template('home.html')
@@ -60,7 +82,57 @@ def attendance_details(day_index):
         
         if 0 <= day_index < len(schedule_data):
             day_data = schedule_data[day_index]
-            return render_template('attendance_details.html', day_data=day_data, day_index=day_index)
+            
+            # Get weekly attendance totals for this date
+            weekly_totals_sheet = spreadsheet.worksheet('Weekly Attendance Totals')
+            all_totals = weekly_totals_sheet.get_all_records()
+            
+            # Filter totals by matching date
+            date_totals = [row for row in all_totals if row.get('Date') == day_data.get('Date')]
+            
+            return render_template('attendance_details.html', 
+                                 day_data=day_data, 
+                                 day_index=day_index,
+                                 weekly_totals=date_totals)
+        else:
+            return redirect(url_for('attendance'))
+    except Exception as e:
+        return redirect(url_for('attendance'))
+
+@app.route('/attendance/<int:day_index>/team/<team_name>')
+def team_attendance_details(day_index, team_name):
+    # Get team attendance details for specific day and team
+    try:
+        attendance_schedule_sheet = spreadsheet.worksheet('Attendance Schedule')
+        schedule_data = attendance_schedule_sheet.get_all_records()
+        
+        if 0 <= day_index < len(schedule_data):
+            day_data = schedule_data[day_index]
+            
+            # Get weekly attendance totals for this date and team
+            weekly_totals_sheet = spreadsheet.worksheet('Weekly Attendance Totals')
+            all_totals = weekly_totals_sheet.get_all_records()
+            
+            # Find the specific team data
+            team_data = next((row for row in all_totals 
+                            if row.get('Date') == day_data.get('Date') 
+                            and row.get('Team', '').lower() == team_name.lower()), None)
+            
+            # Get attendance entries for this date and team
+            attendance_entries_sheet = spreadsheet.worksheet('Attendance Entries RAW')
+            all_entries = attendance_entries_sheet.get_all_records()
+            
+            # Filter entries by date and team using flexible date matching
+            checked_in_kids = [entry for entry in all_entries 
+                             if dates_match(entry.get('Date'), day_data.get('Date')) 
+                             and entry.get('Team', '').lower() == team_name.lower()]
+            
+            return render_template('team_attendance_details.html', 
+                                 day_data=day_data, 
+                                 day_index=day_index,
+                                 team_data=team_data,
+                                 team_name=team_name,
+                                 checked_in_kids=checked_in_kids)
         else:
             return redirect(url_for('attendance'))
     except Exception as e:

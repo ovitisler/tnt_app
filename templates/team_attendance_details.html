@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>TNT Reading Teams Tracker - Attendance Details</title>
+    <title>TNT Reading Teams Tracker - Team Attendance</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         * {
@@ -87,108 +87,124 @@
         .page-header .subtitle {
             color: #666;
             font-size: 1.1em;
-            font-style: italic;
         }
 
-        .details-container {
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        .team-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            color: white;
+            font-weight: bold;
+            margin-bottom: 10px;
         }
 
-        .details-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 0;
-        }
-
-        .detail-item {
-            padding: 20px;
-            border-bottom: 1px solid #eee;
-            border-right: 1px solid #eee;
-        }
-
-        .detail-item:nth-child(even) {
-            background: #f8f9fa;
-        }
-
-        .detail-item strong {
-            display: block;
-            color: #333;
-            margin-bottom: 5px;
-            font-size: 0.9em;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .detail-item span {
-            color: #555;
-            font-size: 1.1em;
-        }
+        .team-badge.red { background: #dc3545; }
+        .team-badge.blue { background: #007bff; }
+        .team-badge.green { background: #28a745; }
+        .team-badge.yellow { background: #ffc107; color: #333; }
 
         .content-section {
-            margin-top: 30px;
-            padding: 30px;
             background: #f9f9f9;
+            padding: 40px;
             border-radius: 8px;
             text-align: center;
             color: #666;
         }
 
-        .attendance-section {
-            margin-top: 30px;
+        .check-in-button {
+            background: #28a745;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 30px;
+            transition: background 0.2s ease;
         }
 
-        .attendance-section h2 {
-            color: #333;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #eee;
+        .check-in-button:hover {
+            background: #218838;
         }
 
-        .teams-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-        }
-
-        .team-card {
+        .team-stats {
             background: white;
             border: 1px solid #ddd;
             border-radius: 8px;
             overflow: hidden;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            cursor: pointer;
-            transition: all 0.2s ease;
+            margin-bottom: 30px;
         }
 
-        .team-card:hover {
-            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-            transform: translateY(-2px);
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 0;
         }
 
-        .team-header {
-            padding: 15px;
-            font-weight: bold;
-            color: white;
-            text-align: center;
-        }
-
-        .team-header.red { background: #dc3545; }
-        .team-header.blue { background: #007bff; }
-        .team-header.green { background: #28a745; }
-        .team-header.yellow { background: #ffc107; color: #333; }
-
-        .team-data {
+        .stat-item {
             padding: 20px;
-            text-align: center;
+            border-bottom: 1px solid #eee;
+            border-right: 1px solid #eee;
+            text-align: left;
         }
 
-        .kids-present {
-            font-size: 1.2em;
+        .stat-item:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        .stat-label {
+            display: block;
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
             color: #333;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .kids-list {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .kids-list h3 {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            margin: 0;
+            color: #333;
+            border-bottom: 1px solid #eee;
+        }
+
+        .kids-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 0;
+        }
+
+        .kid-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+            border-right: 1px solid #eee;
+        }
+
+        .kid-item:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        .no-kids {
+            padding: 30px;
+            text-align: center;
+            color: #666;
         }
 
         @media (max-width: 768px) {
@@ -224,14 +240,6 @@
                 text-align: center;
                 padding: 15px;
             }
-
-            .details-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .detail-item {
-                border-right: none;
-            }
         }
     </style>
 </head>
@@ -243,51 +251,68 @@
     </nav>
 
     <main class="main-content">
-        <a href="/attendance" class="back-button">
-            ← Back to Schedule
+        <a href="/attendance/{{ day_index }}" class="back-button">
+            ← Back to {{ day_data.Date }}
         </a>
 
         <div class="page-header">
+            <div class="team-badge {{ team_name|lower }}">{{ team_name }} Team</div>
             <h1>{{ day_data.Date }}</h1>
             <p class="subtitle">{{ day_data.Theme }}</p>
         </div>
         
-        <div class="details-container">
-            <div class="details-grid">
-                {% for key, value in day_data.items() %}
-                {% if key not in ['Date', 'Theme'] and value %}
-                <div class="detail-item">
-                    <strong>{{ key }}</strong>
-                    <span>{{ value }}</span>
+        <button class="check-in-button" onclick="alert('Check-in functionality coming soon!')">
+            Check a Kid in
+        </button>
+
+        {% if team_data %}
+        <div class="team-stats">
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span class="stat-label">Date</span>
+                    <span class="stat-value">{{ day_data.Date }}</span>
                 </div>
-                {% endif %}
-                {% endfor %}
+                <div class="stat-item">
+                    <span class="stat-label">Team</span>
+                    <span class="stat-value">{{ team_name }} Team</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Kids Present</span>
+                    <span class="stat-value">{{ team_data.get('Kids Present', 0) }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Attendance Points</span>
+                    <span class="stat-value">{{ team_data.get('Attendance Points', 0) }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Points per Kid</span>
+                    <span class="stat-value">{{ team_data.get('Points per Kid', 0) }}</span>
+                </div>
             </div>
         </div>
 
-        <div class="attendance-section">
-            <h2>Weekly Attendance Totals</h2>
-            {% if weekly_totals %}
-            <div class="teams-grid">
-                {% for team_data in weekly_totals %}
-                <div class="team-card" onclick="window.location.href='/attendance/{{ day_index }}/team/{{ team_data.Team }}'">
-                    <div class="team-header {{ team_data.Team|lower }}">
-                        {{ team_data.Team }} Team
-                    </div>
-                    <div class="team-data">
-                        <div class="kids-present">
-                            Kids Present - {{ team_data.get('Kids Present', 0) }}
-                        </div>
-                    </div>
+        <div class="kids-list">
+            <h3>Checked-in Kids</h3>
+            {% if checked_in_kids %}
+            <div class="kids-grid">
+                {% for kid in checked_in_kids %}
+                <div class="kid-item">
+                    {{ kid.Name }}
                 </div>
                 {% endfor %}
             </div>
             {% else %}
-            <div class="content-section">
-                <p>No attendance data found for this date.</p>
+            <div class="no-kids">
+                <p>No kids checked in for this date and team.</p>
             </div>
             {% endif %}
         </div>
+        {% else %}
+        <div class="content-section">
+            <h2>No Data Found</h2>
+            <p>No attendance data found for {{ team_name }} team on {{ day_data.Date }}.</p>
+        </div>
+        {% endif %}
     </main>
 </body>
 </html>
