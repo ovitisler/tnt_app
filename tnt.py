@@ -138,6 +138,37 @@ def team_attendance_details(day_index, team_name):
     except Exception as e:
         return redirect(url_for('attendance'))
 
+@app.route('/attendance/<int:day_index>/team/<team_name>/kid/<kid_name>')
+def kid_attendance_details(day_index, team_name, kid_name):
+    # Get individual kid attendance details
+    try:
+        attendance_schedule_sheet = spreadsheet.worksheet('Attendance Schedule')
+        schedule_data = attendance_schedule_sheet.get_all_records()
+        
+        if 0 <= day_index < len(schedule_data):
+            day_data = schedule_data[day_index]
+            
+            # Get attendance entries for this specific kid, date, and team
+            attendance_entries_sheet = spreadsheet.worksheet('Attendance Entries RAW')
+            all_entries = attendance_entries_sheet.get_all_records()
+            
+            # Find the specific kid's entry
+            kid_entry = next((entry for entry in all_entries 
+                            if dates_match(entry.get('Date'), day_data.get('Date')) 
+                            and entry.get('Team', '').lower() == team_name.lower()
+                            and entry.get('Name', '').lower() == kid_name.lower()), None)
+            
+            return render_template('kid_attendance_details.html', 
+                                 day_data=day_data, 
+                                 day_index=day_index,
+                                 team_name=team_name,
+                                 kid_name=kid_name,
+                                 kid_entry=kid_entry)
+        else:
+            return redirect(url_for('attendance'))
+    except Exception as e:
+        return redirect(url_for('attendance'))
+
 @app.route('/progress')
 def progress():
     return render_template('progress.html')

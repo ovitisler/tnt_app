@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>TNT Reading Teams Tracker - Team Attendance</title>
+    <title>TNT Reading Teams Tracker - Kid Attendance</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         * {
@@ -103,112 +103,75 @@
         .team-badge.green { background: #28a745; }
         .team-badge.yellow { background: #ffc107; color: #333; }
 
-        .content-section {
-            background: #f9f9f9;
-            padding: 40px;
-            border-radius: 8px;
-            text-align: center;
-            color: #666;
-        }
-
-        .check-in-button {
-            background: #28a745;
-            color: white;
-            padding: 15px 30px;
-            border: none;
-            border-radius: 8px;
-            font-size: 1.1em;
-            font-weight: bold;
-            cursor: pointer;
-            margin-bottom: 30px;
-            transition: background 0.2s ease;
-        }
-
-        .check-in-button:hover {
-            background: #218838;
-        }
-
-        .team-stats {
+        .attendance-details {
             background: white;
             border: 1px solid #ddd;
             border-radius: 8px;
             overflow: hidden;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
         }
 
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 0;
-        }
-
-        .stat-item {
+        .details-header {
+            background: #f8f9fa;
             padding: 20px;
             border-bottom: 1px solid #eee;
-            border-right: 1px solid #eee;
-            text-align: left;
         }
 
-        .stat-item:nth-child(even) {
+        .details-header h3 {
+            color: #333;
+            margin: 0;
+        }
+
+        .details-list {
+            padding: 0;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-row:nth-child(even) {
             background: #f8f9fa;
         }
 
-        .stat-label {
-            display: block;
-            color: #666;
-            font-size: 0.9em;
-            margin-bottom: 5px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+        .detail-label {
+            font-weight: 500;
+            color: #555;
         }
 
-        .stat-value {
-            color: #333;
+        .detail-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-icon {
             font-size: 1.2em;
             font-weight: bold;
         }
 
-        .kids-list {
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        .status-icon.check {
+            color: #28a745;
         }
 
-        .kids-list h3 {
-            background: #f8f9fa;
-            padding: 15px 20px;
-            margin: 0;
+        .status-icon.x {
+            color: #dc3545;
+        }
+
+        .status-text {
             color: #333;
-            border-bottom: 1px solid #eee;
         }
 
-        .kids-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 0;
-        }
-
-        .kid-item {
-            padding: 15px 20px;
-            border-bottom: 1px solid #eee;
-            border-right: 1px solid #eee;
-            cursor: pointer;
-            transition: background 0.2s ease;
-        }
-
-        .kid-item:hover {
-            background: #e9ecef;
-        }
-
-        .kid-item:nth-child(even) {
-            background: #f8f9fa;
-        }
-
-        .no-kids {
-            padding: 30px;
+        .no-data {
+            padding: 40px;
             text-align: center;
             color: #666;
         }
@@ -257,66 +220,44 @@
     </nav>
 
     <main class="main-content">
-        <a href="/attendance/{{ day_index }}" class="back-button">
-            ← Back to {{ day_data.Date }}
+        <a href="/attendance/{{ day_index }}/team/{{ team_name }}" class="back-button">
+            ← Back to {{ team_name }} Team
         </a>
 
         <div class="page-header">
             <div class="team-badge {{ team_name|lower }}">{{ team_name }} Team</div>
-            <h1>{{ day_data.Date }}</h1>
-            <p class="subtitle">{{ day_data.Theme }}</p>
+            <h1>{{ kid_name }}</h1>
+            <p class="subtitle">{{ day_data.Date }} - {{ day_data.Theme }}</p>
         </div>
         
-        <button class="check-in-button" onclick="alert('Check-in functionality coming soon!')">
-            Check a Kid in
-        </button>
-
-        {% if team_data %}
-        <div class="team-stats">
-            <div class="stats-grid">
-                <div class="stat-item">
-                    <span class="stat-label">Date</span>
-                    <span class="stat-value">{{ day_data.Date }}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Team</span>
-                    <span class="stat-value">{{ team_name }} Team</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Kids Present</span>
-                    <span class="stat-value">{{ team_data.get('Kids Present', 0) }}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Attendance Points</span>
-                    <span class="stat-value">{{ team_data.get('Attendance Points', 0) }}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Points per Kid</span>
-                    <span class="stat-value">{{ team_data.get('Points per Kid', 0) }}</span>
-                </div>
+        {% if kid_entry %}
+        <div class="attendance-details">
+            <div class="details-header">
+                <h3>Attendance Details</h3>
             </div>
-        </div>
-
-        <div class="kids-list">
-            <h3>Checked-in Kids</h3>
-            {% if checked_in_kids %}
-            <div class="kids-grid">
-                {% for kid in checked_in_kids %}
-                <div class="kid-item" onclick="window.location.href='/attendance/{{ day_index }}/team/{{ team_name }}/kid/{{ kid.Name }}'">
-                    {{ kid.Name }}
+            <div class="details-list">
+                {% for key, value in kid_entry.items() %}
+                {% if key not in ['Name', 'Team', 'timestamp'] %}
+                <div class="detail-row">
+                    <span class="detail-label">{{ key }}:</span>
+                    <div class="detail-status">
+                        {% if value and value|string|lower in ['true', 'yes', '1', 'present'] %}
+                        <span class="status-icon check">✓</span>
+                        {% elif key not in ['Date', 'timestamp'] %}
+                        <span class="status-icon x">✗</span>
+                        {% else %}
+                        <span class="status-text">{{ value }}</span>
+                        {% endif %}
+                    </div>
                 </div>
+                {% endif %}
                 {% endfor %}
             </div>
-            {% else %}
-            <div class="no-kids">
-                <p>No kids checked in for this date and team.</p>
-            </div>
-            {% endif %}
         </div>
         {% else %}
-        <div class="content-section">
+        <div class="no-data">
             <h2>No Data Found</h2>
-            <p>No attendance data found for {{ team_name }} team on {{ day_data.Date }}.</p>
+            <p>No attendance data found for {{ kid_name }} on {{ day_data.Date }}.</p>
         </div>
         {% endif %}
     </main>
