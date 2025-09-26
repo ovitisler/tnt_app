@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>TNT Reading Teams Tracker - Home</title>
+    <title>TNT Reading Teams Tracker - Progress Lookup</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         * {
@@ -55,22 +55,21 @@
             max-width: 1200px;
         }
 
-        .welcome-section {
-            text-align: center;
-            padding: 40px 20px;
-            background: #f9f9f9;
-            border-radius: 8px;
+        .page-header {
             margin-bottom: 30px;
         }
 
-        .welcome-section h1 {
+        .page-header h1 {
             color: #333;
             margin-bottom: 10px;
         }
 
-        .welcome-section p {
+        .placeholder-content {
+            background: #f9f9f9;
+            padding: 40px;
+            border-radius: 8px;
+            text-align: center;
             color: #666;
-            font-size: 1.1em;
         }
 
         @media (max-width: 768px) {
@@ -111,19 +110,20 @@
 </head>
 <body>
     <nav class="nav-tabs">
-        <a href="/" class="active">Home</a>
+        <a href="/">Home</a>
         <a href="/attendance">Attendance</a>
-        <a href="/progress">Progress Lookup</a>
+        <a href="/progress" class="active">Progress Lookup</a>
     </nav>
 
     <main class="main-content">
-        <div class="welcome-section">
-            <h1>TNT Reading Teams Tracker</h1>
-            <p>Welcome to the reading teams tracking system</p>
+        <div class="page-header">
+            <h1>Progress Lookup</h1>
         </div>
         
-        <div style="text-align: center; color: #666;">
-            <p>Select a tab above to get started</p>
+        <div class="placeholder-content">
+            <h2>Student Progress Lookup</h2>
+            <p>This section will be used to look up individual student progress.</p>
+            <p>Content coming soon...</p>
         </div>
     </main>
 </body>

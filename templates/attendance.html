@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TNT Reading Teams Tracker - Attendance</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+        }
+
+        .nav-tabs {
+            width: 200px;
+            background: #f8f8f8;
+            padding: 20px;
+            border-right: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            height: 100vh;
+            position: fixed;
+        }
+        
+        .nav-tabs a {
+            text-decoration: none;
+            color: #666;
+            padding: 15px;
+            border-radius: 4px;
+            text-align: left;
+            transition: all 0.2s ease;
+        }
+        
+        .nav-tabs a.active {
+            background: #fff;
+            color: #333;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .nav-tabs a:hover {
+            background: #fff;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 20px;
+            margin-left: 200px;
+            max-width: 1200px;
+        }
+
+        .page-header {
+            margin-bottom: 30px;
+        }
+
+        .page-header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .placeholder-content {
+            background: #f9f9f9;
+            padding: 40px;
+            border-radius: 8px;
+            text-align: center;
+            color: #666;
+        }
+
+        .error-message {
+            background: #ffe6e6;
+            border: 1px solid #ff9999;
+            padding: 20px;
+            border-radius: 8px;
+            color: #cc0000;
+            text-align: center;
+        }
+
+        .schedule-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .schedule-item {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: box-shadow 0.2s ease;
+        }
+
+        .schedule-item:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+        .schedule-header {
+            padding: 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8f9fa;
+        }
+
+        .schedule-header:hover {
+            background: #e9ecef;
+        }
+
+        .schedule-main h3 {
+            margin: 0 0 5px 0;
+            color: #333;
+            font-size: 1.2em;
+        }
+
+        .schedule-main .theme {
+            margin: 0;
+            color: #666;
+            font-style: italic;
+        }
+
+        .arrow-icon {
+            font-size: 1.2em;
+            color: #666;
+            transition: transform 0.2s ease;
+        }
+
+        .schedule-item:hover .arrow-icon {
+            transform: translateX(5px);
+        }
+
+        @media (max-width: 768px) {
+            body {
+                display: block;
+            }
+
+            .main-content {
+                margin-left: 0;
+                padding: 10px;
+                padding-bottom: 80px;
+            }
+            
+            .nav-tabs {
+                width: 100%;
+                height: auto;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: white;
+                margin: 0;
+                padding: 10px;
+                border-top: 1px solid #ddd;
+                border-right: none;
+                flex-direction: row;
+                z-index: 1000;
+                box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+            }
+            
+            .nav-tabs a {
+                flex: 1;
+                text-align: center;
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav-tabs">
+        <a href="/">Home</a>
+        <a href="/attendance" class="active">Attendance</a>
+        <a href="/progress">Progress Lookup</a>
+    </nav>
+
+    <main class="main-content">
+        <div class="page-header">
+            <h1>Attendance</h1>
+        </div>
+        
+        {% if error %}
+        <div class="error-message">
+            <p>Error loading attendance schedule: {{ error }}</p>
+        </div>
+        {% elif schedule_data %}
+        <div class="schedule-list">
+            {% for day in schedule_data %}
+            <div class="schedule-item" onclick="window.location.href='/attendance/{{ loop.index0 }}'">
+                <div class="schedule-header">
+                    <div class="schedule-main">
+                        <h3>{{ day.Date }}</h3>
+                        <p class="theme">{{ day.Theme }}</p>
+                    </div>
+                    <span class="arrow-icon">→</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="placeholder-content">
+            <h2>No Schedule Data</h2>
+            <p>No attendance schedule found in the Google Sheet.</p>
+        </div>
+        {% endif %}
+    </main>
+
+
+</body>
+</html>

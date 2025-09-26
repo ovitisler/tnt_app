@@ -38,153 +38,41 @@ def find_column_index(worksheet, header_name):
 
 @app.route('/')
 def home():
-    return redirect(url_for('roster'))
+    return render_template('home.html')
 
-@app.route('/roster')
-def roster():
-    # Get all students from the roster sheet
-    students = roster_sheet.get_all_records()
-    # Get team data for the dropdown
-    teams_data = teams_sheet.get_all_records()
-    team_names = [team['Team'] for team in teams_data]
-    
-    # Organize students by team
-    students_by_team = defaultdict(list)
-    for student in students:
-        team = student.get('Group', student.get('Team', 'Unassigned'))
-        students_by_team[team].append(student)
-    
-    # Sort teams and students within teams
-    sorted_students_by_team = {}
-    for team in sorted(students_by_team.keys()):
-        sorted_students_by_team[team] = sorted(students_by_team[team], key=lambda x: x['Name'])
-    
-    return render_template('roster.html', students_by_team=sorted_students_by_team, teams=team_names)
-
-@app.route('/dashboard')
-def dashboard():
-    # Get all data from roster sheet
-    students = roster_sheet.get_all_records()
-    teams_data = teams_sheet.get_all_records()
-    
-    # Create teams dictionary with colors
-    teams = {}
-    for team in teams_data:
-        teams[team['Team']] = {
-            'color': team['Color'],
-            'points': 0,
-            'members': []
-        }
-    
-    # Populate teams with student data
-    for student in students:
-        team_name = student.get('Group', student.get('Team', ''))  # Try Group first, then Team
-        if team_name in teams:
-            teams[team_name]['members'].append({
-                'name': student['Name'],
-                'sections_completed': student.get('Sections_Completed', 0),
-                'points': student.get('Points', 0)
-            })
-            teams[team_name]['points'] += student.get('Points', 0)
-    
-    return render_template('dashboard.html', teams=teams)
-
-@app.route('/add_student', methods=['POST'])
-def add_student():
-    name = request.form['name']
-    team = request.form['team']
-    
-    # Find the column indices
-    name_col = find_column_index(roster_sheet, 'Name')
-    group_col = find_column_index(roster_sheet, 'Group')
-    sections_col = find_column_index(roster_sheet, 'Sections_Completed')
-    points_col = find_column_index(roster_sheet, 'Points')
-    
-    # Create a row with empty values
-    row = [''] * len(roster_sheet.row_values(1))  # Create empty row matching header length
-    
-    # Fill in the values we care about
-    if name_col: row[name_col-1] = name
-    if group_col: row[group_col-1] = team
-    if sections_col: row[sections_col-1] = 0
-    if points_col: row[points_col-1] = 0
-    
-    # Add new student to roster sheet
-    roster_sheet.append_row(row)
-    
-    return redirect(url_for('roster'))
-
-@app.route('/delete_student', methods=['POST'])
-def delete_student():
-    data = request.get_json()
-    name = data.get('name')
-    
-    if not name:
-        return jsonify({'error': 'Name is required'}), 400
-    
+@app.route('/attendance')
+def attendance():
+    # Get attendance schedule data from the sheet
     try:
-        # Find the student's row
-        cell = roster_sheet.find(name)
-        if cell:
-            roster_sheet.delete_rows(cell.row)
-            return jsonify({'message': 'Student deleted successfully'}), 200
-        else:
-            return jsonify({'error': 'Student not found'}), 404
+        attendance_schedule_sheet = spreadsheet.worksheet('Attendance Schedule')
+        schedule_data = attendance_schedule_sheet.get_all_records()
+        return render_template('attendance.html', schedule_data=schedule_data)
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        # If sheet doesn't exist or error occurs, return empty data
+        return render_template('attendance.html', schedule_data=[], error=str(e))
+
+@app.route('/attendance/<int:day_index>')
+def attendance_details(day_index):
+    # Get attendance schedule data and show details for specific day
+    try:
+        attendance_schedule_sheet = spreadsheet.worksheet('Attendance Schedule')
+        schedule_data = attendance_schedule_sheet.get_all_records()
+        
+        if 0 <= day_index < len(schedule_data):
+            day_data = schedule_data[day_index]
+            return render_template('attendance_details.html', day_data=day_data, day_index=day_index)
+        else:
+            return redirect(url_for('attendance'))
+    except Exception as e:
+        return redirect(url_for('attendance'))
+
+@app.route('/progress')
+def progress():
+    return render_template('progress.html')
+
+
+
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)
-
-# Create templates/home.html with this content:
-"""
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Reading Teams Tracker</title>
-    <style>
-        .team-card {
-            border: 1px solid #ccc;
-            margin: 10px;
-            padding: 15px;
-            border-radius: 5px;
-        }
-        .team-points {
-            font-size: 24px;
-            font-weight: bold;
-        }
-    </style>
-</head>
-<body>
-    <h1>Reading Teams Tracker</h1>
-    
-    <h2>Add Points</h2>
-    <form action="/add_points" method="POST">
-        <input type="text" name="student_name" placeholder="Student Name" required>
-        <input type="number" name="sections" placeholder="Sections Completed" required>
-        <button type="submit">Add Points</button>
-    </form>
-
-    <h2>Add New Student</h2>
-    <form action="/add_student" method="POST">
-        <input type="text" name="name" placeholder="Student Name" required>
-        <input type="text" name="team" placeholder="Team Name" required>
-        <button type="submit">Add Student</button>
-    </form>
-
-    <h2>Team Standings</h2>
-    {% for team_name, team in teams.items() %}
-    <div class="team-card">
-        <h3>{{ team_name }}</h3>
-        <p class="team-points">Total Points: {{ team['points'] }}</p>
-        <h4>Team Members:</h4>
-        <ul>
-        {% for member in team['members'] %}
-            <li>{{ member['name'] }} - {{ member['sections_completed'] }} sections completed ({{ member['points'] }} points)</li>
-        {% endfor %}
-        </ul>
-    </div>
-    {% endfor %}
-</body>
-</html>
-"""
