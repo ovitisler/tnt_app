@@ -5,6 +5,7 @@ from datetime import datetime
 from collections import defaultdict
 import os
 import json
+from urllib.parse import unquote
 
 app = Flask(__name__)
 
@@ -138,7 +139,7 @@ def team_attendance_details(day_index, team_name):
     except Exception as e:
         return redirect(url_for('attendance'))
 
-@app.route('/attendance/<int:day_index>/team/<team_name>/kid/<kid_name>')
+@app.route('/attendance/<int:day_index>/team/<team_name>/kid/<path:kid_name>')
 def kid_attendance_details(day_index, team_name, kid_name):
     # Get individual kid attendance details
     try:
@@ -166,6 +167,62 @@ def kid_attendance_details(day_index, team_name, kid_name):
                                  kid_entry=kid_entry)
         else:
             return redirect(url_for('attendance'))
+    except Exception as e:
+        return redirect(url_for('attendance'))
+
+@app.route('/edit_attendance', methods=['GET', 'POST'])
+def edit_kid_attendance():
+    print(f"Request method: {request.method}")
+    print(f"Form data: {request.form}")
+    
+    # Handle GET requests (redirect back)
+    if request.method == 'GET':
+        return redirect(url_for('attendance'))
+    
+    # Update kid attendance in Google Sheets
+    try:
+        day_index = int(request.form.get('day_index'))
+        team_name = request.form.get('team_name')
+        kid_name = request.form.get('kid_name')
+        
+        attendance_schedule_sheet = spreadsheet.worksheet('Attendance Schedule')
+        schedule_data = attendance_schedule_sheet.get_all_records()
+        
+        if 0 <= day_index < len(schedule_data):
+            day_data = schedule_data[day_index]
+            
+            # Get attendance entries sheet
+            attendance_entries_sheet = spreadsheet.worksheet('Attendance Entries RAW')
+            all_entries = attendance_entries_sheet.get_all_records()
+            
+            # Find the row to update
+            for i, entry in enumerate(all_entries):
+                if (dates_match(entry.get('Date'), day_data.get('Date')) 
+                    and entry.get('Team', '').lower() == team_name.lower()
+                    and entry.get('Name', '').lower() == kid_name.lower()):
+                    
+                    # Update the row with form data
+                    row_num = i + 2  # +2 because sheets are 1-indexed and we skip header
+                    
+                    # Get headers to find column positions
+                    headers = attendance_entries_sheet.row_values(1)
+                    
+                    # Update all editable fields based on form state
+                    protected_fields = ['day_index', 'team_name', 'kid_name', 'Name', 'Team', 'Date', 'Timestamp', 'timestamp']
+                    
+                    for field_name in entry.keys():
+                        if field_name not in protected_fields:
+                            try:
+                                col_index = headers.index(field_name) + 1
+                                value = 'TRUE' if field_name in request.form else 'FALSE'
+                                attendance_entries_sheet.update_cell(row_num, col_index, value)
+                            except ValueError:
+                                continue
+                    break
+            
+            return redirect(f'/attendance/{day_index}/team/{team_name}/kid/{kid_name}')
+        
+        return redirect(url_for('attendance'))
     except Exception as e:
         return redirect(url_for('attendance'))
 

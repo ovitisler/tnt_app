@@ -176,6 +176,113 @@
             color: #666;
         }
 
+        .edit-button {
+            background: #007bff;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: background 0.2s ease;
+        }
+
+        .edit-button:hover {
+            background: #0056b3;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 60px;
+            height: 30px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 30px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #28a745;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(30px);
+        }
+
+        .edit-buttons {
+            display: none;
+            gap: 10px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #eee;
+        }
+
+        .save-button {
+            background: #28a745;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+
+        .cancel-button {
+            background: #6c757d;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+
+        .edit-mode .edit-buttons {
+            display: flex;
+        }
+
+        .edit-mode .edit-button {
+            display: none;
+        }
+
+        .edit-mode .detail-status .status-display {
+            display: none;
+        }
+
+        .edit-mode .detail-status .toggle-switch {
+            display: block;
+        }
+
+        .detail-status .toggle-switch {
+            display: none;
+        }
+
         @media (max-width: 768px) {
             body {
                 display: block;
@@ -231,29 +338,50 @@
         </div>
         
         {% if kid_entry %}
-        <div class="attendance-details">
-            <div class="details-header">
-                <h3>Attendance Details</h3>
-            </div>
-            <div class="details-list">
-                {% for key, value in kid_entry.items() %}
-                {% if key not in ['Name', 'Team', 'timestamp'] %}
-                <div class="detail-row">
-                    <span class="detail-label">{{ key }}:</span>
-                    <div class="detail-status">
-                        {% if value and value|string|lower in ['true', 'yes', '1', 'present'] %}
-                        <span class="status-icon check">✓</span>
-                        {% elif key not in ['Date', 'timestamp'] %}
-                        <span class="status-icon x">✗</span>
-                        {% else %}
-                        <span class="status-text">{{ value }}</span>
-                        {% endif %}
+        <form id="editForm" method="POST" action="/edit_attendance">
+            <input type="hidden" name="day_index" value="{{ day_index }}">
+            <input type="hidden" name="team_name" value="{{ team_name }}">
+            <input type="hidden" name="kid_name" value="{{ kid_name }}">
+            
+            <div class="attendance-details" id="attendanceDetails">
+                <div class="details-header">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h3>Details</h3>
+                        <button type="button" class="edit-button" onclick="toggleEditMode()">Edit</button>
                     </div>
                 </div>
-                {% endif %}
-                {% endfor %}
+                <div class="details-list">
+                    {% for key, value in kid_entry.items() %}
+                    {% if key not in ['Name', 'Team', 'timestamp', 'Timestamp'] %}
+                    <div class="detail-row">
+                        <span class="detail-label">{{ key }}:</span>
+                        <div class="detail-status">
+                            <div class="status-display">
+                                {% if key == 'Date' %}
+                                <span class="status-text">{{ value }}</span>
+                                {% elif value and value|string|lower in ['true', 'yes', '1', 'present'] %}
+                                <span class="status-icon check">✓</span>
+                                {% else %}
+                                <span class="status-icon x">✗</span>
+                                {% endif %}
+                            </div>
+                            {% if key != 'Date' %}
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="{{ key }}" {% if value and value|string|lower in ['true', 'yes', '1', 'present'] %}checked{% endif %}>
+                                <span class="slider"></span>
+                            </label>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                <div class="edit-buttons">
+                    <button type="submit" class="save-button">Save</button>
+                    <button type="button" class="cancel-button" onclick="toggleEditMode()">Cancel</button>
+                </div>
             </div>
-        </div>
+        </form>
         {% else %}
         <div class="no-data">
             <h2>No Data Found</h2>
@@ -261,5 +389,30 @@
         </div>
         {% endif %}
     </main>
+
+    <script>
+        function toggleEditMode() {
+            const details = document.getElementById('attendanceDetails');
+            details.classList.toggle('edit-mode');
+        }
+        
+        document.getElementById('editForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const formData = new FormData(this);
+            fetch('/edit_attendance', {
+                method: 'POST',
+                body: formData
+            }).then(response => {
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    alert('Error updating attendance');
+                }
+            }).catch(error => {
+                console.error('Error:', error);
+                alert('Error updating attendance');
+            });
+        });
+    </script>
 </body>
 </html>
