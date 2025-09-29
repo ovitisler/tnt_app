@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}TNT Reading Teams Tracker - {{ student_name }} Progress{% endblock %}
+
+{% block content %}
+<a href="/progress" class="back-button">
+    ← Back to Progress Lookup
+</a>
+
+<div class="page-header">
+    {% if student_info %}
+    <div class="team-badge {{ student_info.Group|lower }}">{{ student_info.Group }} Team</div>
+    {% endif %}
+    <h1>{{ student_name }}</h1>
+    <p class="subtitle">Progress Summary</p>
+</div>
+
+<div class="team-stats">
+    <div class="stats-grid">
+        <div class="stat-item">
+            <span class="stat-label">Total Sections Completed</span>
+            <span class="stat-value">{{ total_sections }}</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Silver Credits Earned</span>
+            <span class="stat-value">{{ silver_earned }}</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Gold Credits Earned</span>
+            <span class="stat-value">{{ gold_earned }}</span>
+        </div>
+    </div>
+</div>
+
+<div class="kids-list">
+    <h3>Completed Sections</h3>
+    {% if student_sections %}
+    <div class="kids-grid">
+        {% for section in student_sections %}
+        <div class="kid-item">
+            <div class="section-row" onclick="window.location.href='/progress/student/{{ student_name|urlencode }}/section/{{ loop.index0 }}'">
+                <div>
+                    <span class="section-name">Section {{ section.Section }}</span>
+                    <div style="font-size: 0.9em; color: #666; margin-top: 2px;">{{ section.Date }}</div>
+                </div>
+                <span class="arrow-icon">→</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="no-kids">
+        <p>No completed sections found for {{ student_name }}.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

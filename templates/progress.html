@@ -5,11 +5,54 @@
 {% block content %}
 <div class="page-header">
     <h1>Progress Lookup</h1>
+    <p class="subtitle">View individual student progress and completed sections</p>
 </div>
 
-<div class="placeholder-content">
-    <h2>Student Progress Lookup</h2>
-    <p>This section will be used to look up individual student progress.</p>
-    <p>Content coming soon...</p>
+{% if students %}
+<div class="search-container" style="margin-bottom: 20px;">
+    <input type="text" id="studentSearch" placeholder="Search students..." style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px;">
 </div>
+
+<div class="schedule-list" id="studentsList">
+    {% for student in students %}
+    <div class="schedule-item student-item" onclick="window.location.href='/progress/student/{{ student.Name|urlencode }}'">
+        <div class="schedule-header">
+            <div class="schedule-main">
+                <h3>{{ student.Name }}</h3>
+                <p class="theme">{{ student.Group }} Team</p>
+            </div>
+            <span class="arrow-icon">→</span>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="no-data">
+    <h2>No Students Found</h2>
+    <p>No students found in the Master Roster.</p>
+    {% if error %}
+    <p class="error-message">Error: {{ error }}</p>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('studentSearch').addEventListener('input', function() {
+    const searchTerm = this.value.toLowerCase();
+    const studentItems = document.querySelectorAll('#studentsList .student-item');
+    
+    studentItems.forEach(function(item) {
+        const studentName = item.querySelector('h3').textContent.toLowerCase();
+        const teamName = item.querySelector('.theme').textContent.toLowerCase();
+        
+        if (studentName.includes(searchTerm) || teamName.includes(searchTerm)) {
+            item.style.display = 'block';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+});
+</script>
 {% endblock %}

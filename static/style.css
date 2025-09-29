@@ -63,8 +63,11 @@ body {
     color: var(--color-text-muted);
     padding: var(--spacing-md);
     border-radius: var(--radius-sm);
-    text-align: left;
+    text-align: center;
     transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .nav-tabs a.active {
@@ -75,6 +78,17 @@ body {
 
 .nav-tabs a:hover {
     background: #fff;
+}
+
+.nav-icon {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 1.3em;
+}
+
+.nav-text {
+    font-size: 0.9em;
+    line-height: 1.2;
 }
 
 .main-content {
@@ -746,7 +760,7 @@ input:checked + .slider:before {
         right: 0;
         background: white;
         margin: 0;
-        padding: var(--spacing-sm);
+        padding: 8px 4px;
         border-top: 1px solid var(--color-border);
         border-right: none;
         flex-direction: row;
@@ -757,7 +771,19 @@ input:checked + .slider:before {
     .nav-tabs a {
         flex: 1;
         text-align: center;
-        padding: var(--spacing-md);
+        padding: 8px 4px;
+        min-height: 60px;
+        justify-content: center;
+    }
+    
+    .nav-icon {
+        font-size: 1.5em;
+        margin-bottom: 2px;
+    }
+    
+    .nav-text {
+        font-size: 0.75em;
+        line-height: 1;
     }
     
     .form-container {
