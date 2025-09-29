@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>TNT Reading Teams Tracker - Home</title>
+    <title>TNT Reading Teams Tracker - {{ day_data.Date }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -60,84 +60,46 @@
             max-width: 1200px;
         }
 
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            color: #666;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            transition: all 0.2s ease;
+        }
+
+        .back-button:hover {
+            background: #f8f9fa;
+            color: #333;
+        }
+
         .page-header {
             margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #eee;
         }
 
         .page-header h1 {
             color: #333;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
         }
 
-        .placeholder-content {
+        .page-header .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .content-section {
             background: #f9f9f9;
             padding: 40px;
             border-radius: 8px;
             text-align: center;
             color: #666;
-        }
-
-        .error-message {
-            background: #ffe6e6;
-            border: 1px solid #ff9999;
-            padding: 20px;
-            border-radius: 8px;
-            color: #cc0000;
-            text-align: center;
-        }
-
-        .schedule-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .schedule-item {
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            overflow: hidden;
-            background: white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            transition: box-shadow 0.2s ease;
-        }
-
-        .schedule-item:hover {
-            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-        }
-
-        .schedule-header {
-            padding: 20px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #f8f9fa;
-        }
-
-        .schedule-header:hover {
-            background: #e9ecef;
-        }
-
-        .schedule-main h3 {
-            margin: 0 0 5px 0;
-            color: #333;
-            font-size: 1.2em;
-        }
-
-        .schedule-main .theme {
-            margin: 0;
-            color: #666;
-            font-style: italic;
-        }
-
-        .arrow-icon {
-            font-size: 1.2em;
-            color: #666;
-            transition: transform 0.2s ease;
-        }
-
-        .schedule-item:hover .arrow-icon {
-            transform: translateX(5px);
         }
 
         @media (max-width: 768px) {
@@ -184,34 +146,19 @@
     </nav>
 
     <main class="main-content">
+        <a href="/" class="back-button">
+            ← Back to Home
+        </a>
+
         <div class="page-header">
-            <h1>Home</h1>
+            <h1>{{ day_data.Date }}</h1>
+            <p class="subtitle">{{ day_data.Theme }}</p>
         </div>
         
-        {% if error %}
-        <div class="error-message">
-            <p>Error loading schedule: {{ error }}</p>
+        <div class="content-section">
+            <h2>Schedule Details</h2>
+            <p>Content for this date coming soon...</p>
         </div>
-        {% elif schedule_data %}
-        <div class="schedule-list">
-            {% for day in schedule_data %}
-            <div class="schedule-item" onclick="window.location.href='/home/{{ loop.index0 }}'">
-                <div class="schedule-header">
-                    <div class="schedule-main">
-                        <h3>{{ day.Date }}</h3>
-                        <p class="theme">{{ day.Theme }}</p>
-                    </div>
-                    <span class="arrow-icon">→</span>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-        {% else %}
-        <div class="placeholder-content">
-            <h2>No Schedule Data</h2>
-            <p>No schedule found in the Google Sheet.</p>
-        </div>
-        {% endif %}
     </main>
 </body>
 </html>

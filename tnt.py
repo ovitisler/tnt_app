@@ -65,7 +65,14 @@ def dates_match(date1, date2):
 
 @app.route('/')
 def home():
-    return render_template('home.html')
+    # Get schedule data from the sheet
+    try:
+        schedule_sheet = spreadsheet.worksheet('Schedule')
+        schedule_data = schedule_sheet.get_all_records()
+        return render_template('home.html', schedule_data=schedule_data)
+    except Exception as e:
+        # If sheet doesn't exist or error occurs, return empty data
+        return render_template('home.html', schedule_data=[], error=str(e))
 
 @app.route('/attendance')
 def attendance():
@@ -291,6 +298,23 @@ def submit_checkin():
         return redirect(f'/attendance/{day_index}/team/{team}')
     except Exception as e:
         return redirect(url_for('attendance'))
+
+@app.route('/home/<int:day_index>')
+def home_details(day_index):
+    # Get schedule data and show details for specific day
+    try:
+        schedule_sheet = spreadsheet.worksheet('Schedule')
+        schedule_data = schedule_sheet.get_all_records()
+        
+        if 0 <= day_index < len(schedule_data):
+            day_data = schedule_data[day_index]
+            return render_template('home_details.html', 
+                                 day_data=day_data, 
+                                 day_index=day_index)
+        else:
+            return redirect(url_for('home'))
+    except Exception as e:
+        return redirect(url_for('home'))
 
 @app.route('/progress')
 def progress():
