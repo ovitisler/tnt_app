@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}TNT Reading Teams Tracker - {{ team_name }} Team{% endblock %}
+
+{% block content %}
+<a href="/home/{{ day_index }}" class="back-button">
+    ← Back to {{ day_data.Date }}
+</a>
+
+<div class="page-header">
+    <div class="team-badge {{ team_name|lower }}">{{ team_name }} Team</div>
+    <h1>{{ day_data.Date }}</h1>
+    <p class="subtitle">{{ day_data.Theme }}</p>
+</div>
+
+{% if team_data %}
+<div class="team-stats">
+    <div class="stats-grid">
+        <div class="stat-item">
+            <span class="stat-label">Team Total Points</span>
+            <span class="stat-value">{{ team_data.get('Team Total Points', 0) }}</span>
+        </div>
+        {% for key, value in team_data.items() %}
+        {% if key not in ['Date', 'Team', 'Team Total Points'] and value %}
+        <div class="stat-item">
+            <span class="stat-label">{{ key }}</span>
+            <span class="stat-value">{{ value }}</span>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div class="kids-list">
+    <h3>Completed Sections</h3>
+    {% if kids_sections %}
+    <div class="kids-grid">
+        {% for kid_name, sections in kids_sections.items() %}
+        <div class="kid-item">
+            <strong>{{ kid_name }}</strong>
+            {% for section in sections %}
+            <div class="section-row" 
+                 onclick="window.location.href='/home/{{ day_index }}/team/{{ team_name }}/kid/{{ kid_name|urlencode }}/section/{{ section|urlencode }}'">
+                <span class="section-name">{{ section }}</span>
+                <span class="arrow-icon">→</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="no-kids">
+        <p>No completed sections found for this team on this date.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

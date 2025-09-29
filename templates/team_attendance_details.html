@@ -48,8 +48,11 @@
     {% if checked_in_kids %}
     <div class="kids-grid">
         {% for kid in checked_in_kids %}
-        <div class="kid-item" onclick="window.location.href='/attendance/{{ day_index }}/team/{{ team_name }}/kid/{{ kid.Name }}'">
-            {{ kid.Name }}
+        <div class="kid-item">
+            <div class="section-row" onclick="window.location.href='/attendance/{{ day_index }}/team/{{ team_name }}/kid/{{ kid.Name }}'">
+                <span class="section-name">{{ kid.Name }}</span>
+                <span class="arrow-icon">→</span>
+            </div>
         </div>
         {% endfor %}
     </div>

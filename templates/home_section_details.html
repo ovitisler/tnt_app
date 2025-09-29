@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}TNT Reading Teams Tracker - {{ kid_name }} - {{ section_name }}{% endblock %}
+
+{% block content %}
+<a href="/home/{{ day_index }}/team/{{ team_name }}" class="back-button">
+    ← Back to {{ team_name }} Team
+</a>
+
+<div class="page-header">
+    <div class="team-badge {{ team_name|lower }}">{{ team_name }} Team</div>
+    <h1>{{ kid_name }}</h1>
+    <p class="subtitle">{{ section_name }} - {{ day_data.Date }}</p>
+</div>
+
+{% if section_entry %}
+<div class="attendance-details">
+    <div class="details-header">
+        <h3>Section Completion Details</h3>
+    </div>
+    <div class="details-list">
+        {% for key, value in section_entry.items() %}
+        {% if key not in ['Name', 'Team', 'Date', 'Section'] and value %}
+        <div class="detail-row">
+            <span class="detail-label">{{ key }}</span>
+            <div class="detail-status">
+                <span class="status-text">{{ value }}</span>
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+</div>
+{% else %}
+<div class="no-data">
+    <p>No completion data found for this section.</p>
+</div>
+{% endif %}
+{% endblock %}

@@ -220,29 +220,31 @@ body {
 }
 
 .stat-item {
-    padding: 20px;
-    border-bottom: 1px solid #eee;
-    border-right: 1px solid #eee;
-    text-align: left;
+    padding: var(--spacing-lg);
+    border-bottom: 1px solid var(--color-border-light);
+    border-right: 1px solid var(--color-border-light);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .stat-item:nth-child(even) {
-    background: #f8f9fa;
+    background: var(--color-gray-light);
 }
 
 .stat-label {
-    display: block;
-    color: #666;
+    color: var(--color-text-muted);
     font-size: 0.9em;
-    margin-bottom: 5px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    flex: 1;
 }
 
 .stat-value {
-    color: #333;
+    color: var(--color-gray-dark);
     font-size: 1.2em;
     font-weight: bold;
+    text-align: right;
 }
 
 .kids-list {
@@ -675,6 +677,51 @@ input:checked + .slider:before {
     align-items: center;
     justify-content: center;
     padding: var(--spacing-lg);
+}
+
+/* Section row styles */
+.section-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-md) var(--spacing-lg);
+    margin: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 1em;
+    border: 1px solid var(--color-border-light);
+    background: white;
+}
+
+.section-row:hover {
+    background: var(--color-blue);
+    color: white;
+    border-color: var(--color-blue);
+    transform: translateX(2px);
+}
+
+.section-row:hover .section-name {
+    color: white;
+}
+
+.section-row:hover .arrow-icon {
+    color: white;
+}
+
+.section-name {
+    color: var(--color-gray-dark);
+    font-weight: 500;
+}
+
+.section-row .arrow-icon {
+    color: var(--color-text-muted);
+    font-size: 1.1em;
+    transition: transform 0.2s ease;
+}
+
+.section-row:hover .arrow-icon {
+    transform: translateX(3px);
 }
 
 /* Consolidated mobile styles */

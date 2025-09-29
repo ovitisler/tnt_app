@@ -12,8 +12,27 @@
     <p class="subtitle">{{ day_data.Theme }}</p>
 </div>
 
-<div class="content-section">
-    <h2>Schedule Details</h2>
-    <p>Content for this date coming soon...</p>
+<div class="attendance-section">
+    <h2>Weekly Totals</h2>
+    {% if weekly_totals %}
+    <div class="teams-grid">
+        {% for team_data in weekly_totals %}
+        <div class="team-card" onclick="window.location.href='/home/{{ day_index }}/team/{{ team_data.Team }}'">
+            <div class="team-header {{ team_data.Team|lower }}">
+                {{ team_data.Team }} Team
+            </div>
+            <div class="team-data">
+                <div class="kids-present">
+                    Total Points - {{ team_data.get('Team Total Points', 0) }}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="content-section">
+        <p>No team data found for this date.</p>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

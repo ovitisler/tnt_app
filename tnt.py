@@ -307,9 +307,97 @@ def home_details(day_index):
         
         if 0 <= day_index < len(schedule_data):
             day_data = schedule_data[day_index]
+            
+            # Get weekly totals for this date
+            weekly_totals_sheet = spreadsheet.worksheet('Weekly Totals')
+            all_totals = weekly_totals_sheet.get_all_records()
+            
+            # Filter totals by matching date
+            date_totals = [row for row in all_totals if row.get('Date') == day_data.get('Date')]
+            
             return render_template('home_details.html', 
                                  day_data=day_data, 
-                                 day_index=day_index)
+                                 day_index=day_index,
+                                 weekly_totals=date_totals)
+        else:
+            return redirect(url_for('home'))
+    except Exception as e:
+        return redirect(url_for('home'))
+
+@app.route('/home/<int:day_index>/team/<team_name>')
+def home_team_details(day_index, team_name):
+    # Get team details for specific day and team from home perspective
+    try:
+        schedule_sheet = spreadsheet.worksheet('Schedule')
+        schedule_data = schedule_sheet.get_all_records()
+        
+        if 0 <= day_index < len(schedule_data):
+            day_data = schedule_data[day_index]
+            
+            # Get weekly totals for this date and team
+            weekly_totals_sheet = spreadsheet.worksheet('Weekly Totals')
+            all_totals = weekly_totals_sheet.get_all_records()
+            
+            # Find the specific team data
+            team_data = next((row for row in all_totals 
+                            if row.get('Date') == day_data.get('Date') 
+                            and row.get('Team', '').lower() == team_name.lower()), None)
+            
+            # Get completed sections for this date and team
+            completed_sections_sheet = spreadsheet.worksheet('Completed Sections RAW')
+            all_sections = completed_sections_sheet.get_all_records()
+            
+            # Filter sections by date and team using flexible date matching
+            team_sections = [entry for entry in all_sections 
+                           if dates_match(entry.get('Date'), day_data.get('Date')) 
+                           and entry.get('Team', '').lower() == team_name.lower()]
+            
+            # Group sections by kid name
+            kids_sections = defaultdict(list)
+            for section in team_sections:
+                kid_name = section.get('Name', '')
+                if kid_name:
+                    kids_sections[kid_name].append(section.get('Section', ''))
+            
+            return render_template('home_team_details.html', 
+                                 day_data=day_data, 
+                                 day_index=day_index,
+                                 team_data=team_data,
+                                 team_name=team_name,
+                                 kids_sections=kids_sections)
+        else:
+            return redirect(url_for('home'))
+    except Exception as e:
+        return redirect(url_for('home'))
+
+@app.route('/home/<int:day_index>/team/<team_name>/kid/<path:kid_name>/section/<path:section_name>')
+def home_section_details(day_index, team_name, kid_name, section_name):
+    # Get section completion details
+    try:
+        schedule_sheet = spreadsheet.worksheet('Schedule')
+        schedule_data = schedule_sheet.get_all_records()
+        
+        if 0 <= day_index < len(schedule_data):
+            day_data = schedule_data[day_index]
+            
+            # Get completed sections for this specific entry
+            completed_sections_sheet = spreadsheet.worksheet('Completed Sections RAW')
+            all_sections = completed_sections_sheet.get_all_records()
+            
+            # Find the specific section entry
+            section_entry = next((entry for entry in all_sections 
+                                if dates_match(entry.get('Date'), day_data.get('Date')) 
+                                and entry.get('Team', '').lower() == team_name.lower()
+                                and entry.get('Name', '').lower() == kid_name.lower()
+                                and entry.get('Section', '') == section_name), None)
+            
+            return render_template('home_section_details.html', 
+                                 day_data=day_data, 
+                                 day_index=day_index,
+                                 team_name=team_name,
+                                 kid_name=kid_name,
+                                 section_name=section_name,
+                                 section_entry=section_entry)
         else:
             return redirect(url_for('home'))
     except Exception as e:
