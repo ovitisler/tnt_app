@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% block title %}TNT Reading Teams Tracker{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="TNT Tracker">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="apple-touch-icon" href="/static/icon-192.png">
+    <link rel="stylesheet" href="/static/style.css">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <nav class="nav-tabs">
+        <a href="/" {% if request.endpoint == 'home' %}class="active"{% endif %}>Home</a>
+        <a href="/attendance" {% if request.endpoint in ['attendance', 'attendance_details', 'team_attendance_details', 'kid_attendance_details', 'checkin_form'] %}class="active"{% endif %}>Attendance</a>
+        <a href="/progress" {% if request.endpoint == 'progress' %}class="active"{% endif %}>Progress Lookup</a>
+    </nav>
+
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,164 +1,19 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>TNT Reading Teams Tracker - {{ day_data.Date }}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="TNT Tracker">
-    <link rel="manifest" href="/static/manifest.json">
-    <link rel="apple-touch-icon" href="/static/icon-192.png">
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-        
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            min-height: 100vh;
-            display: flex;
-        }
+{% extends "base.html" %}
 
-        .nav-tabs {
-            width: 200px;
-            background: #f8f8f8;
-            padding: 20px;
-            border-right: 1px solid #ddd;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            height: 100vh;
-            position: fixed;
-        }
-        
-        .nav-tabs a {
-            text-decoration: none;
-            color: #666;
-            padding: 15px;
-            border-radius: 4px;
-            text-align: left;
-            transition: all 0.2s ease;
-        }
-        
-        .nav-tabs a.active {
-            background: #fff;
-            color: #333;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
+{% block title %}TNT Reading Teams Tracker - {{ day_data.Date }}{% endblock %}
 
-        .nav-tabs a:hover {
-            background: #fff;
-        }
+{% block content %}
+<a href="/" class="back-button">
+    ← Back to Home
+</a>
 
-        .main-content {
-            flex: 1;
-            padding: 20px;
-            margin-left: 200px;
-            max-width: 1200px;
-        }
+<div class="page-header">
+    <h1>{{ day_data.Date }}</h1>
+    <p class="subtitle">{{ day_data.Theme }}</p>
+</div>
 
-        .back-button {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            text-decoration: none;
-            color: #666;
-            padding: 10px 15px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            margin-bottom: 20px;
-            transition: all 0.2s ease;
-        }
-
-        .back-button:hover {
-            background: #f8f9fa;
-            color: #333;
-        }
-
-        .page-header {
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 2px solid #eee;
-        }
-
-        .page-header h1 {
-            color: #333;
-            margin-bottom: 5px;
-        }
-
-        .page-header .subtitle {
-            color: #666;
-            font-size: 1.1em;
-        }
-
-        .content-section {
-            background: #f9f9f9;
-            padding: 40px;
-            border-radius: 8px;
-            text-align: center;
-            color: #666;
-        }
-
-        @media (max-width: 768px) {
-            body {
-                display: block;
-            }
-
-            .main-content {
-                margin-left: 0;
-                padding: 10px;
-                padding-bottom: 80px;
-            }
-            
-            .nav-tabs {
-                width: 100%;
-                height: auto;
-                position: fixed;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                background: white;
-                margin: 0;
-                padding: 10px;
-                border-top: 1px solid #ddd;
-                border-right: none;
-                flex-direction: row;
-                z-index: 1000;
-                box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-            }
-            
-            .nav-tabs a {
-                flex: 1;
-                text-align: center;
-                padding: 15px;
-            }
-        }
-    </style>
-</head>
-<body>
-    <nav class="nav-tabs">
-        <a href="/" class="active">Home</a>
-        <a href="/attendance">Attendance</a>
-        <a href="/progress">Progress Lookup</a>
-    </nav>
-
-    <main class="main-content">
-        <a href="/" class="back-button">
-            ← Back to Home
-        </a>
-
-        <div class="page-header">
-            <h1>{{ day_data.Date }}</h1>
-            <p class="subtitle">{{ day_data.Theme }}</p>
-        </div>
-        
-        <div class="content-section">
-            <h2>Schedule Details</h2>
-            <p>Content for this date coming soon...</p>
-        </div>
-    </main>
-</body>
-</html>
+<div class="content-section">
+    <h2>Schedule Details</h2>
+    <p>Content for this date coming soon...</p>
+</div>
+{% endblock %}

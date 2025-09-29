@@ -1,300 +1,115 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>TNT Reading Teams Tracker - Check In Kid</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="TNT Tracker">
-    <link rel="manifest" href="/static/manifest.json">
-    <link rel="apple-touch-icon" href="/static/icon-192.png">
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-        
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            min-height: 100vh;
-            background: #f8f9fa;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
+{% extends "fullscreen_base.html" %}
 
-        .form-container {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-            padding: 40px;
-            width: 100%;
-            max-width: 500px;
-        }
+{% block title %}TNT Reading Teams Tracker - Check In Kid{% endblock %}
 
-        .form-header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-
-        .team-badge {
-            display: inline-block;
-            padding: 8px 16px;
-            border-radius: 20px;
-            color: white;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-
-        .team-badge.red { background: #dc3545; }
-        .team-badge.blue { background: #007bff; }
-        .team-badge.green { background: #28a745; }
-        .team-badge.yellow { background: #ffc107; color: #333; }
-
-        .form-header h1 {
-            color: #333;
-            margin-bottom: 5px;
-        }
-
-        .form-group {
-            margin-bottom: 25px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: #555;
-        }
-
-        .form-group select {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 16px;
-            background: white;
-        }
-
-        .toggle-group {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px 0;
-            border-bottom: 1px solid #eee;
-        }
-
-        .toggle-group:last-child {
-            border-bottom: none;
-        }
-
-        .toggle-label {
-            font-weight: 500;
-            color: #555;
-        }
-
-        .toggle-switch {
-            position: relative;
-            width: 60px;
-            height: 30px;
-        }
-
-        .toggle-switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #ccc;
-            transition: .4s;
-            border-radius: 30px;
-        }
-
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 22px;
-            width: 22px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-        }
-
-        input:checked + .slider {
-            background-color: #28a745;
-        }
-
-        input:checked + .slider:before {
-            transform: translateX(30px);
-        }
-
-        .form-buttons {
-            display: flex;
-            gap: 15px;
-            margin-top: 30px;
-        }
-
-        .submit-button {
-            flex: 1;
-            background: #28a745;
-            color: white;
-            padding: 15px;
-            border: none;
-            border-radius: 6px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background 0.2s ease;
-        }
-
-        .submit-button:hover {
-            background: #218838;
-        }
-
-        .cancel-button {
-            flex: 1;
-            background: #6c757d;
-            color: white;
-            padding: 15px;
-            border: none;
-            border-radius: 6px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background 0.2s ease;
-        }
-
-        .cancel-button:hover {
-            background: #5a6268;
-        }
-
-        @media (max-width: 768px) {
-            .form-container {
-                padding: 20px;
-                margin: 10px;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="form-container">
-        <div class="form-header">
-            <div class="team-badge {{ team_name|lower }}">{{ team_name }} Team</div>
-            <h1>Check In Kid</h1>
-        </div>
-
-        <form id="checkinForm" method="POST" action="/submit_checkin">
-            <input type="hidden" name="team" value="{{ team_name }}">
-            <input type="hidden" name="day_index" value="{{ day_index }}">
-
-            <div class="form-group">
-                <label for="name">Name:</label>
-                <select name="name" id="name" required>
-                    <option value="">Select a kid...</option>
-                    {% for kid in team_kids %}
-                    <option value="{{ kid }}">{{ kid }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="date">Date:</label>
-                <select name="date" id="date" required>
-                    {% for schedule_item in schedule_data %}
-                    <option value="{{ schedule_item.Date }}" {% if schedule_item.Date == day_data.Date %}selected{% endif %}>
-                        {{ schedule_item.Date }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="form-group">
-                <div class="toggle-group">
-                    <span class="toggle-label">Present</span>
-                    <label class="toggle-switch">
-                        <input type="checkbox" name="present">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-
-                <div class="toggle-group">
-                    <span class="toggle-label">Has Bible</span>
-                    <label class="toggle-switch">
-                        <input type="checkbox" name="has_bible">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-
-                <div class="toggle-group">
-                    <span class="toggle-label">Wearing Shirt?</span>
-                    <label class="toggle-switch">
-                        <input type="checkbox" name="wearing_shirt">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-
-                <div class="toggle-group">
-                    <span class="toggle-label">Has Book?</span>
-                    <label class="toggle-switch">
-                        <input type="checkbox" name="has_book">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-
-                <div class="toggle-group">
-                    <span class="toggle-label">Did Homework?</span>
-                    <label class="toggle-switch">
-                        <input type="checkbox" name="did_homework">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-
-                <div class="toggle-group">
-                    <span class="toggle-label">Has Dues</span>
-                    <label class="toggle-switch">
-                        <input type="checkbox" name="has_dues">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-            </div>
-
-            <div class="form-buttons">
-                <button type="submit" class="submit-button">Submit</button>
-                <button type="button" class="cancel-button" onclick="window.history.back()">Cancel</button>
-            </div>
-        </form>
+{% block content %}
+<div class="form-container">
+    <div class="form-header">
+        <div class="team-badge {{ team_name|lower }}">{{ team_name }} Team</div>
+        <h1>Check In Kid</h1>
     </div>
 
-    <script>
-        document.getElementById('checkinForm').addEventListener('submit', function(event) {
-            event.preventDefault();
-            const formData = new FormData(this);
-            fetch('/submit_checkin', {
-                method: 'POST',
-                body: formData
-            }).then(response => {
-                if (response.ok) {
-                    window.history.back();
-                } else {
-                    alert('Error submitting check-in');
-                }
-            }).catch(error => {
-                console.error('Error:', error);
-                alert('Error submitting check-in');
-            });
-        });
-    </script>
-</body>
-</html>
+    <form id="checkinForm" method="POST" action="/submit_checkin">
+        <input type="hidden" name="team" value="{{ team_name }}">
+        <input type="hidden" name="day_index" value="{{ day_index }}">
+
+        <div class="form-group">
+            <label for="name">Name:</label>
+            <select name="name" id="name" required>
+                <option value="">Select a kid...</option>
+                {% for kid in team_kids %}
+                <option value="{{ kid }}">{{ kid }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="date">Date:</label>
+            <select name="date" id="date" required>
+                {% for schedule_item in schedule_data %}
+                <option value="{{ schedule_item.Date }}" {% if schedule_item.Date == day_data.Date %}selected{% endif %}>
+                    {{ schedule_item.Date }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <div class="toggle-group">
+                <span class="toggle-label">Present</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" name="present">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="toggle-group">
+                <span class="toggle-label">Has Bible</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" name="has_bible">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="toggle-group">
+                <span class="toggle-label">Wearing Shirt?</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" name="wearing_shirt">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="toggle-group">
+                <span class="toggle-label">Has Book?</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" name="has_book">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="toggle-group">
+                <span class="toggle-label">Did Homework?</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" name="did_homework">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="toggle-group">
+                <span class="toggle-label">Has Dues</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" name="has_dues">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="form-buttons">
+            <button type="submit" class="submit-button">Submit</button>
+            <button type="button" class="cancel-button" onclick="window.history.back()">Cancel</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('checkinForm').addEventListener('submit', function(event) {
+    event.preventDefault();
+    const formData = new FormData(this);
+    fetch('/submit_checkin', {
+        method: 'POST',
+        body: formData
+    }).then(response => {
+        if (response.ok) {
+            window.history.back();
+        } else {
+            alert('Error submitting check-in');
+        }
+    }).catch(error => {
+        console.error('Error:', error);
+        alert('Error submitting check-in');
+    });
+});
+</script>
+{% endblock %}

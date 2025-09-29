@@ -1,324 +1,68 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>TNT Reading Teams Tracker - Team Attendance</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-        
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            min-height: 100vh;
-            display: flex;
-        }
+{% extends "base.html" %}
 
-        .nav-tabs {
-            width: 200px;
-            background: #f8f8f8;
-            padding: 20px;
-            border-right: 1px solid #ddd;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            height: 100vh;
-            position: fixed;
-        }
-        
-        .nav-tabs a {
-            text-decoration: none;
-            color: #666;
-            padding: 15px;
-            border-radius: 4px;
-            text-align: left;
-            transition: all 0.2s ease;
-        }
-        
-        .nav-tabs a.active {
-            background: #fff;
-            color: #333;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
+{% block title %}TNT Reading Teams Tracker - {{ team_name }} Team{% endblock %}
 
-        .nav-tabs a:hover {
-            background: #fff;
-        }
+{% block content %}
+<a href="/attendance/{{ day_index }}" class="back-button">
+    ← Back to {{ day_data.Date }}
+</a>
 
-        .main-content {
-            flex: 1;
-            padding: 20px;
-            margin-left: 200px;
-            max-width: 1200px;
-        }
+<div class="page-header">
+    <div class="team-badge {{ team_name|lower }}">{{ team_name }} Team</div>
+    <h1>{{ day_data.Date }}</h1>
+    <p class="subtitle">{{ day_data.Theme }}</p>
+</div>
 
-        .back-button {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            text-decoration: none;
-            color: #666;
-            padding: 10px 15px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            margin-bottom: 20px;
-            transition: all 0.2s ease;
-        }
+<button class="check-in-button" onclick="window.location.href='/attendance/{{ day_index }}/team/{{ team_name }}/checkin'">
+    Check a Kid in
+</button>
 
-        .back-button:hover {
-            background: #f8f9fa;
-            color: #333;
-        }
-
-        .page-header {
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 2px solid #eee;
-        }
-
-        .page-header h1 {
-            color: #333;
-            margin-bottom: 5px;
-        }
-
-        .page-header .subtitle {
-            color: #666;
-            font-size: 1.1em;
-        }
-
-        .team-badge {
-            display: inline-block;
-            padding: 8px 16px;
-            border-radius: 20px;
-            color: white;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-
-        .team-badge.red { background: #dc3545; }
-        .team-badge.blue { background: #007bff; }
-        .team-badge.green { background: #28a745; }
-        .team-badge.yellow { background: #ffc107; color: #333; }
-
-        .content-section {
-            background: #f9f9f9;
-            padding: 40px;
-            border-radius: 8px;
-            text-align: center;
-            color: #666;
-        }
-
-        .check-in-button {
-            background: #28a745;
-            color: white;
-            padding: 15px 30px;
-            border: none;
-            border-radius: 8px;
-            font-size: 1.1em;
-            font-weight: bold;
-            cursor: pointer;
-            margin-bottom: 30px;
-            transition: background 0.2s ease;
-        }
-
-        .check-in-button:hover {
-            background: #218838;
-        }
-
-        .team-stats {
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 0;
-        }
-
-        .stat-item {
-            padding: 20px;
-            border-bottom: 1px solid #eee;
-            border-right: 1px solid #eee;
-            text-align: left;
-        }
-
-        .stat-item:nth-child(even) {
-            background: #f8f9fa;
-        }
-
-        .stat-label {
-            display: block;
-            color: #666;
-            font-size: 0.9em;
-            margin-bottom: 5px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .stat-value {
-            color: #333;
-            font-size: 1.2em;
-            font-weight: bold;
-        }
-
-        .kids-list {
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .kids-list h3 {
-            background: #f8f9fa;
-            padding: 15px 20px;
-            margin: 0;
-            color: #333;
-            border-bottom: 1px solid #eee;
-        }
-
-        .kids-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 0;
-        }
-
-        .kid-item {
-            padding: 15px 20px;
-            border-bottom: 1px solid #eee;
-            border-right: 1px solid #eee;
-            cursor: pointer;
-            transition: background 0.2s ease;
-        }
-
-        .kid-item:hover {
-            background: #e9ecef;
-        }
-
-        .kid-item:nth-child(even) {
-            background: #f8f9fa;
-        }
-
-        .no-kids {
-            padding: 30px;
-            text-align: center;
-            color: #666;
-        }
-
-        @media (max-width: 768px) {
-            body {
-                display: block;
-            }
-
-            .main-content {
-                margin-left: 0;
-                padding: 10px;
-                padding-bottom: 80px;
-            }
-            
-            .nav-tabs {
-                width: 100%;
-                height: auto;
-                position: fixed;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                background: white;
-                margin: 0;
-                padding: 10px;
-                border-top: 1px solid #ddd;
-                border-right: none;
-                flex-direction: row;
-                z-index: 1000;
-                box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-            }
-            
-            .nav-tabs a {
-                flex: 1;
-                text-align: center;
-                padding: 15px;
-            }
-        }
-    </style>
-</head>
-<body>
-    <nav class="nav-tabs">
-        <a href="/">Home</a>
-        <a href="/attendance" class="active">Attendance</a>
-        <a href="/progress">Progress Lookup</a>
-    </nav>
-
-    <main class="main-content">
-        <a href="/attendance/{{ day_index }}" class="back-button">
-            ← Back to {{ day_data.Date }}
-        </a>
-
-        <div class="page-header">
-            <div class="team-badge {{ team_name|lower }}">{{ team_name }} Team</div>
-            <h1>{{ day_data.Date }}</h1>
-            <p class="subtitle">{{ day_data.Theme }}</p>
+{% if team_data %}
+<div class="team-stats">
+    <div class="stats-grid">
+        <div class="stat-item">
+            <span class="stat-label">Date</span>
+            <span class="stat-value">{{ day_data.Date }}</span>
         </div>
-        
-        <button class="check-in-button" onclick="window.location.href='/attendance/{{ day_index }}/team/{{ team_name }}/checkin'">
-            Check a Kid in
-        </button>
+        <div class="stat-item">
+            <span class="stat-label">Team</span>
+            <span class="stat-value">{{ team_name }} Team</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Kids Present</span>
+            <span class="stat-value">{{ team_data.get('Kids Present', 0) }}</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Attendance Points</span>
+            <span class="stat-value">{{ team_data.get('Attendance Points', 0) }}</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Points per Kid</span>
+            <span class="stat-value">{{ team_data.get('Points per Kid', 0) }}</span>
+        </div>
+    </div>
+</div>
 
-        {% if team_data %}
-        <div class="team-stats">
-            <div class="stats-grid">
-                <div class="stat-item">
-                    <span class="stat-label">Date</span>
-                    <span class="stat-value">{{ day_data.Date }}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Team</span>
-                    <span class="stat-value">{{ team_name }} Team</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Kids Present</span>
-                    <span class="stat-value">{{ team_data.get('Kids Present', 0) }}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Attendance Points</span>
-                    <span class="stat-value">{{ team_data.get('Attendance Points', 0) }}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Points per Kid</span>
-                    <span class="stat-value">{{ team_data.get('Points per Kid', 0) }}</span>
-                </div>
-            </div>
+<div class="kids-list">
+    <h3>Checked-in Kids</h3>
+    {% if checked_in_kids %}
+    <div class="kids-grid">
+        {% for kid in checked_in_kids %}
+        <div class="kid-item" onclick="window.location.href='/attendance/{{ day_index }}/team/{{ team_name }}/kid/{{ kid.Name }}'">
+            {{ kid.Name }}
         </div>
-
-        <div class="kids-list">
-            <h3>Checked-in Kids</h3>
-            {% if checked_in_kids %}
-            <div class="kids-grid">
-                {% for kid in checked_in_kids %}
-                <div class="kid-item" onclick="window.location.href='/attendance/{{ day_index }}/team/{{ team_name }}/kid/{{ kid.Name }}'">
-                    {{ kid.Name }}
-                </div>
-                {% endfor %}
-            </div>
-            {% else %}
-            <div class="no-kids">
-                <p>No kids checked in for this date and team.</p>
-            </div>
-            {% endif %}
-        </div>
-        {% else %}
-        <div class="content-section">
-            <h2>No Data Found</h2>
-            <p>No attendance data found for {{ team_name }} team on {{ day_data.Date }}.</p>
-        </div>
-        {% endif %}
-    </main>
-</body>
-</html>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="no-kids">
+        <p>No kids checked in for this date and team.</p>
+    </div>
+    {% endif %}
+</div>
+{% else %}
+<div class="content-section">
+    <h2>No Data Found</h2>
+    <p>No attendance data found for {{ team_name }} team on {{ day_data.Date }}.</p>
+</div>
+{% endif %}
+{% endblock %}

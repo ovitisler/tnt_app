@@ -30,8 +30,6 @@ client = gspread.authorize(creds)
 # Open the Google Sheet
 sheet_name = os.environ.get('SHEET_NAME', 'TNT_App_Data')
 spreadsheet = client.open(sheet_name)
-roster_sheet = spreadsheet.worksheet('Master Roster')
-teams_sheet = spreadsheet.worksheet('Teams')
 
 def find_column_index(worksheet, header_name):
     """Find the index of a column by its header name"""
@@ -245,6 +243,7 @@ def checkin_form(day_index, team_name):
         schedule_data = attendance_schedule_sheet.get_all_records()
         
         # Get team kids from Master Roster
+        roster_sheet = spreadsheet.worksheet('Master Roster')
         roster_data = roster_sheet.get_all_records()
         team_kids = [row['Name'] for row in roster_data if row.get('Group', '').lower() == team_name.lower()]
         
