@@ -520,7 +520,8 @@ input:checked + .slider:before {
     color: #555;
 }
 
-.form-group select {
+.form-group select,
+.form-group input[type="text"] {
     width: 100%;
     padding: 12px;
     border: 1px solid #ddd;

@@ -1,0 +1,97 @@
+{% extends "fullscreen_base.html" %}
+
+{% block title %}TNT Reading Teams Tracker - Record Section{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <div class="form-header">
+        <div class="team-badge {{ team_name|lower }}">{{ team_name }} Team</div>
+        <h2>Add Completed Section</h2>
+    </div>
+
+    <form id="sectionForm" method="POST" action="/submit_section">
+    
+        <input type="hidden" name="team" value="{{ team_name }}">
+        <input type="hidden" name="day_index" value="{{ day_index }}">
+        
+        <div class="form-group">
+            <label for="name">Student Name:</label>
+            <select name="name" id="name" required>
+                <option value="">Select a student...</option>
+                {% for kid in team_kids %}
+                <option value="{{ kid }}">{{ kid }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="date">Date:</label>
+            <select name="date" id="date" required>
+                {% for schedule_item in schedule_data %}
+                <option value="{{ schedule_item.Date }}" {% if schedule_item.Date == day_data.Date %}selected{% endif %}>
+                    {{ schedule_item.Date }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="section">Section:</label>
+            <input type="text" name="section" id="section" placeholder="e.g., 1.1, 2.3, etc." required>
+        </div>
+        
+        <div class="form-group">
+            <div class="toggle-group">
+                <span class="toggle-label">Section Complete</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" name="Section Complete">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="toggle-group">
+                <span class="toggle-label">Silver Credit</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" name="Silver Credit">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="toggle-group">
+                <span class="toggle-label">Gold Credit</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" name="Gold Credit">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+        
+        <div class="form-buttons">
+            <button type="submit" class="submit-button">Record Section</button>
+            <button type="button" class="cancel-button" onclick="window.history.back()">Cancel</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('sectionForm').addEventListener('submit', function(event) {
+    event.preventDefault();
+    const formData = new FormData(this);
+    fetch('/submit_section', {
+        method: 'POST',
+        body: formData
+    }).then(response => {
+        if (response.ok) {
+            window.history.back();
+        } else {
+            alert('Error recording section');
+        }
+    }).catch(error => {
+        console.error('Error:', error);
+        alert('Error recording section');
+    });
+});
+</script>
+{% endblock %}

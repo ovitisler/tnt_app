@@ -13,6 +13,10 @@
     <p class="subtitle">{{ day_data.Theme }}</p>
 </div>
 
+<button class="check-in-button" onclick="window.location.href='/home/{{ day_index }}/team/{{ team_name }}/record_section'">
+    Record a Completed Section
+</button>
+
 {% if team_data %}
 <div class="team-stats">
     <div class="stats-grid">
