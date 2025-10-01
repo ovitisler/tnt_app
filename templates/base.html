@@ -17,7 +17,11 @@
 <body>
     {% if show_header %}
     <header class="mobile-header">
-        <button class="back-btn" onclick="{% if back_url %}window.location.href='{{ back_url }}'{% else %}history.back(){% endif %}">←</button>
+        {% if back_url %}
+        <button class="back-btn" onclick="window.location.href='{{ back_url }}'">←</button>
+        {% else %}
+        <div class="header-spacer"></div>
+        {% endif %}
         <h1 class="header-title">{{ page_title or 'TNT Tracker' }}</h1>
         <div class="header-action">{{ header_action|safe if header_action else '' }}</div>
     </header>

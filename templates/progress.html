@@ -1,13 +1,10 @@
+{% set show_header = true %}
+{% set page_title = "Progress Lookup" %}
 {% extends "base.html" %}
 
 {% block title %}TNT Reading Teams Tracker - Progress Lookup{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>Progress Lookup</h1>
-    <p class="subtitle">View individual student progress and completed sections</p>
-</div>
-
 {% if students %}
 <div class="search-container" style="margin-bottom: 20px;">
     <input type="text" id="studentSearch" placeholder="Search students..." style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px;">

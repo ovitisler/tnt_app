@@ -1,12 +1,10 @@
+{% set show_header = true %}
+{% set page_title = "Attendance" %}
 {% extends "base.html" %}
 
 {% block title %}TNT Reading Teams Tracker - Attendance{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>Attendance</h1>
-</div>
-
 {% if error %}
 <div class="error-message">
     <p>Error loading attendance schedule: {{ error }}</p>

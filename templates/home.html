@@ -1,12 +1,10 @@
+{% set show_header = true %}
+{% set page_title = "Moody Church T&T" %}
 {% extends "base.html" %}
 
 {% block title %}TNT Reading Teams Tracker - Home{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>Moody Church T&T</h1>
-</div>
-
 {% if error %}
 <div class="error-message">
     <p>Error loading schedule: {{ error }}</p>
