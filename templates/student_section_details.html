@@ -1,5 +1,5 @@
 {% set show_header = true %}
-{% set page_title = "Section " + section_entry.Section %}
+{% set page_title = "Section " + section_entry.Section|string %}
 {% set back_url = "/progress/student/" + student_name|urlencode %}
 {% extends "base.html" %}
 

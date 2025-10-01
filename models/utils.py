@@ -40,7 +40,10 @@ def date_to_url(date_str):
     """Convert date string to URL-safe format (YYYY-MM-DD)"""
     try:
         # Parse various date formats and convert to YYYY-MM-DD
-        if ',' in date_str:
+        if 'T' in str(date_str):
+            # ISO format (2025-09-17T00:00:00.000Z)
+            dt = datetime.fromisoformat(str(date_str).replace('Z', '+00:00'))
+        elif ',' in date_str:
             # "September 17, 2025" format
             dt = datetime.strptime(date_str, '%B %d, %Y')
         else:

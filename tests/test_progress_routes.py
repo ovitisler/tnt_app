@@ -30,6 +30,10 @@ class TestProgressRoutes(unittest.TestCase):
         self.app = Flask(__name__)
         self.app.config['TESTING'] = True
         
+        # Add template filters like main app
+        from models.utils import date_to_url
+        self.app.jinja_env.filters['date_to_url'] = date_to_url
+        
         register_progress_routes(self.app)
         self.client = self.app.test_client()
     
@@ -157,6 +161,30 @@ class TestProgressRoutes(unittest.TestCase):
         response = self.client.get('/progress/student/John%20Doe/section/0')
         self.assertEqual(response.status_code, 302)  # Redirect to progress
         self.assertIn('/progress', response.location)
+    
+    @patch('routes.progress.render_template')
+    @patch('routes.progress.spreadsheet')
+    def test_student_section_details_iso_date_format(self, mock_spreadsheet, mock_render):
+        """Test student_section_details with ISO date format (should not redirect)"""
+        # Data with ISO date format like real Google Sheets
+        iso_sections_data = [
+            {'Name': 'Scarlet Tisler', 'Date': '2025-09-17T00:00:00.000Z', 'Section': '0.2', 'Silver Credit': 'TRUE', 'Gold Credit': '', 'Section Complete': 'TRUE'}
+        ]
+        
+        mock_sections_sheet = Mock()
+        mock_sections_sheet.get_all_records.return_value = iso_sections_data
+        mock_spreadsheet.worksheet.return_value = mock_sections_sheet
+        mock_render.return_value = 'rendered template'
+        
+        response = self.client.get('/progress/student/Scarlet%20Tisler/section/0')
+        self.assertEqual(response.status_code, 200)  # Should render, not redirect
+        
+        mock_render.assert_called_once()
+        call_args = mock_render.call_args[1]
+        self.assertEqual(call_args['student_name'], 'Scarlet Tisler')
+        self.assertEqual(call_args['section_index'], 0)
+        self.assertEqual(call_args['section_entry']['Section'], '0.2')
+        self.assertEqual(call_args['section_entry']['Date'], '2025-09-17T00:00:00.000Z')
     
     @patch('routes.progress.spreadsheet')
     def test_edit_progress_section_get_redirect(self, mock_spreadsheet):

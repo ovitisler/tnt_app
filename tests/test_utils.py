@@ -83,6 +83,11 @@ class TestUtilityFunctions(unittest.TestCase):
         result = url_to_date('2025-09-17')
         self.assertEqual(result, 'September 17, 2025')
     
+    def test_date_to_url_iso_format(self):
+        """Test date_to_url with ISO format"""
+        result = date_to_url('2025-09-17T00:00:00.000Z')
+        self.assertEqual(result, '2025-09-17')
+    
     def test_url_to_date_invalid_format(self):
         """Test url_to_date with invalid format returns as-is"""
         result = url_to_date('invalid-date')
