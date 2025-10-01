@@ -12,6 +12,14 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body>
+    {% if show_header %}
+    <header class="mobile-header">
+        <button class="back-btn" onclick="{% if back_url %}window.location.href='{{ back_url }}'{% else %}history.back(){% endif %}">←</button>
+        <h1 class="header-title">{{ page_title or 'TNT Tracker' }}</h1>
+        <div class="header-action">{{ header_action|safe if header_action else '' }}</div>
+    </header>
+    {% endif %}
+    
     <nav class="nav-tabs">
         <a href="/" {% if request.endpoint == 'home' %}class="active"{% endif %}>
             <span class="nav-icon">🏠</span>
@@ -27,7 +35,7 @@
         </a>
     </nav>
 
-    <main class="main-content">
+    <main class="main-content{% if show_header %} with-header{% endif %}">
         {% block content %}{% endblock %}
     </main>
 

@@ -12,7 +12,18 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body class="fullscreen-body">
-    {% block content %}{% endblock %}
+    {% if show_header %}
+    <header class="mobile-header">
+        <button class="back-btn" onclick="{% if back_url %}window.location.href='{{ back_url }}'{% else %}history.back(){% endif %}">←</button>
+        <h1 class="header-title">{{ page_title or 'TNT Tracker' }}</h1>
+        <div class="header-action">{{ header_action|safe if header_action else '' }}</div>
+    </header>
+    <div class="fullscreen-content with-header">
+    {% else %}
+    <div class="fullscreen-content">
+    {% endif %}
+        {% block content %}{% endblock %}
+    </div>
     {% block extra_js %}{% endblock %}
 </body>
 </html>
