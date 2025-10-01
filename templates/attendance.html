@@ -14,7 +14,7 @@
 {% elif schedule_data %}
 <div class="schedule-list">
     {% for day in schedule_data %}
-    <div class="schedule-item" onclick="window.location.href='/attendance/{{ loop.index0 }}'">
+    <div class="schedule-item" onclick="window.location.href='/attendance/{{ day.Date | date_to_url }}'">
         <div class="schedule-header">
             <div class="schedule-main">
                 <h3>{{ day.Date }}</h3>

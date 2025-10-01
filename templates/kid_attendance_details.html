@@ -3,7 +3,7 @@
 {% block title %}TNT Reading Teams Tracker - {{ kid_name }}{% endblock %}
 
 {% block content %}
-<a href="/attendance/{{ day_index }}/team/{{ team_name }}" class="back-button">
+<a href="/attendance/{{ date_str }}/team/{{ team_name }}" class="back-button">
     ← Back to {{ team_name }} Team
 </a>
 
@@ -15,7 +15,7 @@
 
 {% if kid_entry %}
 <form id="editForm" method="POST" action="/edit_attendance">
-    <input type="hidden" name="day_index" value="{{ day_index }}">
+    <input type="hidden" name="date_str" value="{{ date_str }}">
     <input type="hidden" name="team_name" value="{{ team_name }}">
     <input type="hidden" name="kid_name" value="{{ kid_name }}">
     

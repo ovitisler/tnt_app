@@ -3,7 +3,7 @@
 {% block title %}TNT Reading Teams Tracker - {{ team_name }} Team{% endblock %}
 
 {% block content %}
-<a href="/attendance/{{ day_index }}" class="back-button">
+<a href="/attendance/{{ date_str }}" class="back-button">
     ← Back to {{ day_data.Date }}
 </a>
 
@@ -13,7 +13,7 @@
     <p class="subtitle">{{ day_data.Theme }}</p>
 </div>
 
-<button class="check-in-button" onclick="window.location.href='/attendance/{{ day_index }}/team/{{ team_name }}/checkin'">
+<button class="check-in-button" onclick="window.location.href='/attendance/{{ date_str }}/team/{{ team_name }}/checkin'">
     Check a Kid in
 </button>
 
@@ -49,7 +49,7 @@
     <div class="kids-grid">
         {% for kid in checked_in_kids %}
         <div class="kid-item">
-            <div class="section-row" onclick="window.location.href='/attendance/{{ day_index }}/team/{{ team_name }}/kid/{{ kid.Name }}'">
+            <div class="section-row" onclick="window.location.href='/attendance/{{ date_str }}/team/{{ team_name }}/kid/{{ kid.Name }}'">
                 <span class="section-name">{{ kid.Name }}</span>
                 <span class="arrow-icon">→</span>
             </div>
