@@ -3,7 +3,7 @@
 {% block title %}TNT Reading Teams Tracker - {{ team_name }} Team{% endblock %}
 
 {% block content %}
-<a href="/home/{{ day_index }}" class="back-button">
+<a href="/home/{{ date_str }}" class="back-button">
     ← Back to {{ day_data.Date }}
 </a>
 
@@ -13,7 +13,7 @@
     <p class="subtitle">{{ day_data.Theme }}</p>
 </div>
 
-<button class="check-in-button" onclick="window.location.href='/home/{{ day_index }}/team/{{ team_name }}/record_section'">
+<button class="check-in-button" onclick="window.location.href='/home/{{ date_str }}/team/{{ team_name }}/record_section'">
     Record a Completed Section
 </button>
 
@@ -45,7 +45,7 @@
             <strong>{{ kid_name }}</strong>
             {% for section in sections %}
             <div class="section-row" 
-                 onclick="window.location.href='/home/{{ day_index }}/team/{{ team_name }}/kid/{{ kid_name|urlencode }}/section/{{ section|urlencode }}'">
+                 onclick="window.location.href='/home/{{ date_str }}/team/{{ team_name }}/kid/{{ kid_name|urlencode }}/section/{{ section|urlencode }}'">
                 <span class="section-name">{{ section }}</span>
                 <span class="arrow-icon">→</span>
             </div>

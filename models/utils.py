@@ -28,3 +28,39 @@ def dates_match(date1, date2):
         return parsed_date1 == parsed_date2
     except:
         return str(date1) == str(date2)
+
+def find_day_by_date(schedule_data, date_str):
+    """Find schedule entry by date string"""
+    for entry in schedule_data:
+        if dates_match(entry.get('Date'), date_str):
+            return entry
+    return None
+
+def date_to_url(date_str):
+    """Convert date string to URL-safe format (YYYY-MM-DD)"""
+    try:
+        # Parse various date formats and convert to YYYY-MM-DD
+        if ',' in date_str:
+            # "September 17, 2025" format
+            dt = datetime.strptime(date_str, '%B %d, %Y')
+        else:
+            # Try other common formats
+            for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y']:
+                try:
+                    dt = datetime.strptime(date_str, fmt)
+                    break
+                except ValueError:
+                    continue
+            else:
+                return date_str  # Return as-is if can't parse
+        return dt.strftime('%Y-%m-%d')
+    except:
+        return date_str
+
+def url_to_date(url_date):
+    """Convert URL date (YYYY-MM-DD) back to display format"""
+    try:
+        dt = datetime.strptime(url_date, '%Y-%m-%d')
+        return dt.strftime('%B %d, %Y')
+    except:
+        return url_date

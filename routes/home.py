@@ -4,7 +4,7 @@ from collections import defaultdict
 from urllib.parse import unquote
 
 from models.sheets import get_spreadsheet
-from models.utils import dates_match
+from models.utils import dates_match, find_day_by_date, date_to_url, url_to_date
 
 # Sheet name constants
 SCHEDULE_SHEET = 'Schedule'
@@ -33,15 +33,17 @@ def register_home_routes(app):
             # If sheet doesn't exist or error occurs, return empty data
             return render_template('home.html', schedule_data=[], error=str(e))
 
-    @app.route('/home/<int:day_index>')
-    def home_details(day_index):
+    @app.route('/home/<date_str>')
+    def home_details(date_str):
         # Get schedule data and show details for specific day
         try:
             schedule_data = get_sheet_data(SCHEDULE_SHEET)
             
-            if 0 <= day_index < len(schedule_data):
-                day_data = schedule_data[day_index]
-                
+            # Convert URL date back to display format for matching
+            display_date = url_to_date(date_str)
+            day_data = find_day_by_date(schedule_data, display_date)
+            
+            if day_data:
                 # Get weekly totals for this date
                 all_totals = get_sheet_data(WEEKLY_TOTALS_SHEET)
                 
@@ -50,22 +52,24 @@ def register_home_routes(app):
                 
                 return render_template('home_details.html', 
                                      day_data=day_data, 
-                                     day_index=day_index,
+                                     date_str=date_str,
                                      weekly_totals=date_totals)
             else:
                 return redirect(url_for('home'))
         except Exception as e:
             return redirect(url_for('home'))
 
-    @app.route('/home/<int:day_index>/team/<team_name>')
-    def home_team_details(day_index, team_name):
+    @app.route('/home/<date_str>/team/<team_name>')
+    def home_team_details(date_str, team_name):
         # Get team details for specific day and team from home perspective
         try:
             schedule_data = get_sheet_data(SCHEDULE_SHEET)
             
-            if 0 <= day_index < len(schedule_data):
-                day_data = schedule_data[day_index]
-                
+            # Convert URL date back to display format for matching
+            display_date = url_to_date(date_str)
+            day_data = find_day_by_date(schedule_data, display_date)
+            
+            if day_data:
                 # Get weekly totals for this date and team
                 all_totals = get_sheet_data(WEEKLY_TOTALS_SHEET)
                 
@@ -91,7 +95,7 @@ def register_home_routes(app):
                 
                 return render_template('home_team_details.html', 
                                      day_data=day_data, 
-                                     day_index=day_index,
+                                     date_str=date_str,
                                      team_data=team_data,
                                      team_name=team_name,
                                      kids_sections=kids_sections)
@@ -100,21 +104,24 @@ def register_home_routes(app):
         except Exception as e:
             return redirect(url_for('home'))
 
-    @app.route('/home/<int:day_index>/team/<team_name>/record_section')
-    def record_section_form(day_index, team_name):
+    @app.route('/home/<date_str>/team/<team_name>/record_section')
+    def record_section_form(date_str, team_name):
         try:
             # Get schedule data
             schedule_data = get_sheet_data(SCHEDULE_SHEET)
             
-            # Get team kids from Master Roster
-            roster_data = get_sheet_data(MASTER_ROSTER_SHEET)
-            team_kids = [row['Name'] for row in roster_data if row.get('Group', '').lower() == team_name.lower()]
+            # Convert URL date back to display format for matching
+            display_date = url_to_date(date_str)
+            day_data = find_day_by_date(schedule_data, display_date)
             
-            if 0 <= day_index < len(schedule_data):
-                day_data = schedule_data[day_index]
+            if day_data:
+                # Get team kids from Master Roster
+                roster_data = get_sheet_data(MASTER_ROSTER_SHEET)
+                team_kids = [row['Name'] for row in roster_data if row.get('Group', '').lower() == team_name.lower()]
+                
                 return render_template('record_section_form.html',
                                      day_data=day_data,
-                                     day_index=day_index,
+                                     date_str=date_str,
                                      team_name=team_name,
                                      team_kids=team_kids,
                                      schedule_data=schedule_data)
@@ -123,15 +130,17 @@ def register_home_routes(app):
         except Exception as e:
             return redirect(url_for('home'))
 
-    @app.route('/home/<int:day_index>/team/<team_name>/kid/<path:kid_name>/section/<path:section_name>')
-    def home_section_details(day_index, team_name, kid_name, section_name):
+    @app.route('/home/<date_str>/team/<team_name>/kid/<path:kid_name>/section/<path:section_name>')
+    def home_section_details(date_str, team_name, kid_name, section_name):
         # Get section completion details
         try:
             schedule_data = get_sheet_data(SCHEDULE_SHEET)
             
-            if 0 <= day_index < len(schedule_data):
-                day_data = schedule_data[day_index]
-                
+            # Convert URL date back to display format for matching
+            display_date = url_to_date(date_str)
+            day_data = find_day_by_date(schedule_data, display_date)
+            
+            if day_data:
                 # Get completed sections for this specific entry
                 all_sections = get_sheet_data(COMPLETED_SECTIONS_SHEET)
                 
@@ -148,7 +157,7 @@ def register_home_routes(app):
                 
                 return render_template('home_section_details.html', 
                                      day_data=day_data, 
-                                     day_index=day_index,
+                                     date_str=date_str,
                                      team_name=team_name,
                                      kid_name=kid_name,
                                      section_name=section_name,
@@ -166,7 +175,7 @@ def register_home_routes(app):
             name = request.form.get('name')
             date = request.form.get('date')
             team = request.form.get('team')
-            day_index = request.form.get('day_index')
+            date_str = request.form.get('date_str')
             section = request.form.get('section')
             
             # Get completed sections sheet and headers
@@ -192,7 +201,7 @@ def register_home_routes(app):
             
             completed_sections_sheet.append_row(new_row, value_input_option='USER_ENTERED')
             
-            return redirect(f'/home/{day_index}/team/{team}')
+            return redirect(f'/home/{date_str}/team/{team}')
         except Exception as e:
             return redirect(url_for('home'))
 
@@ -204,17 +213,18 @@ def register_home_routes(app):
         
         # Update section completion in Google Sheets
         try:
-            day_index = int(request.form.get('day_index'))
+            date_str = request.form.get('date_str')
             team_name = request.form.get('team_name')
             kid_name = request.form.get('kid_name')
             section_name = request.form.get('section_name')
             
-            schedule_sheet = spreadsheet.worksheet('Schedule')
-            schedule_data = schedule_sheet.get_all_records()
+            schedule_data = get_sheet_data(SCHEDULE_SHEET)
             
-            if 0 <= day_index < len(schedule_data):
-                day_data = schedule_data[day_index]
-                
+            # Convert URL date back to display format for matching
+            display_date = url_to_date(date_str)
+            day_data = find_day_by_date(schedule_data, display_date)
+            
+            if day_data:
                 # Get completed sections sheet
                 completed_sections_sheet = spreadsheet.worksheet('Completed Sections RAW')
                 all_sections = completed_sections_sheet.get_all_records()
@@ -233,7 +243,7 @@ def register_home_routes(app):
                         headers = completed_sections_sheet.row_values(1)
                         
                         # Update all editable fields based on form state
-                        protected_fields = ['day_index', 'team_name', 'kid_name', 'section_name', 'Name', 'Team', 'Date', 'Section', 'Timestamp', 'timestamp']
+                        protected_fields = ['date_str', 'team_name', 'kid_name', 'section_name', 'Name', 'Team', 'Date', 'Section', 'Timestamp', 'timestamp']
                         
                         for field_name in entry.keys():
                             if field_name not in protected_fields:
@@ -245,7 +255,7 @@ def register_home_routes(app):
                                     continue
                         break
                 
-                return redirect(f'/home/{day_index}/team/{team_name}/kid/{kid_name}/section/{section_name}')
+                return redirect(f'/home/{date_str}/team/{team_name}/kid/{kid_name}/section/{section_name}')
             
             return redirect(url_for('home'))
         except Exception as e:

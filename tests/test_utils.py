@@ -8,7 +8,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import functions to test
-from models.utils import dates_match, find_column_index, parse_date_string
+from models.utils import dates_match, find_column_index, parse_date_string, find_day_by_date, date_to_url, url_to_date
 
 class TestUtilityFunctions(unittest.TestCase):
     
@@ -45,6 +45,48 @@ class TestUtilityFunctions(unittest.TestCase):
         date3 = "invalid date 1"
         date4 = "invalid date 2"
         self.assertFalse(dates_match(date3, date4))
+    
+    def test_find_day_by_date_found(self):
+        """Test find_day_by_date when date is found"""
+        schedule_data = [
+            {'Date': 'September 17, 2025', 'Theme': 'Test Theme 1'},
+            {'Date': 'September 18, 2025', 'Theme': 'Test Theme 2'}
+        ]
+        result = find_day_by_date(schedule_data, 'September 17, 2025')
+        self.assertEqual(result['Theme'], 'Test Theme 1')
+    
+    def test_find_day_by_date_not_found(self):
+        """Test find_day_by_date when date is not found"""
+        schedule_data = [
+            {'Date': 'September 17, 2025', 'Theme': 'Test Theme 1'}
+        ]
+        result = find_day_by_date(schedule_data, 'December 25, 2025')
+        self.assertIsNone(result)
+    
+    def test_date_to_url_readable_format(self):
+        """Test date_to_url with readable format"""
+        result = date_to_url('September 17, 2025')
+        self.assertEqual(result, '2025-09-17')
+    
+    def test_date_to_url_already_url_format(self):
+        """Test date_to_url with already URL format"""
+        result = date_to_url('2025-09-17')
+        self.assertEqual(result, '2025-09-17')
+    
+    def test_date_to_url_invalid_format(self):
+        """Test date_to_url with invalid format returns as-is"""
+        result = date_to_url('invalid-date')
+        self.assertEqual(result, 'invalid-date')
+    
+    def test_url_to_date_valid_format(self):
+        """Test url_to_date with valid URL format"""
+        result = url_to_date('2025-09-17')
+        self.assertEqual(result, 'September 17, 2025')
+    
+    def test_url_to_date_invalid_format(self):
+        """Test url_to_date with invalid format returns as-is"""
+        result = url_to_date('invalid-date')
+        self.assertEqual(result, 'invalid-date')
     
     def test_find_column_index_found(self):
         """Test find_column_index when header is found"""

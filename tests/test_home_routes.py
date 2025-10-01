@@ -20,6 +20,8 @@ class TestHomeRoutes(unittest.TestCase):
         {'Date': 'September 17, 2025', 'Team': 'Red', 'Points': 100}
     ]
     
+    TEST_DATE_STR = '2025-09-17'  # URL format for September 17, 2025
+    
     MULTI_DATE_TOTALS_DATA = [
         {'Date': 'September 17, 2025', 'Team': 'Red', 'Points': 100},
         {'Date': 'September 18, 2025', 'Team': 'Blue', 'Points': 200},
@@ -38,6 +40,11 @@ class TestHomeRoutes(unittest.TestCase):
         """Set up test Flask app with home routes"""
         self.app = Flask(__name__)
         self.app.config['TESTING'] = True
+        
+        # Add the date_to_url filter
+        from models.utils import date_to_url
+        self.app.jinja_env.filters['date_to_url'] = date_to_url
+        
         register_home_routes(self.app)
         self.client = self.app.test_client()
     
@@ -53,8 +60,8 @@ class TestHomeRoutes(unittest.TestCase):
     
     @patch('routes.home.render_template')
     @patch('routes.home.spreadsheet')
-    def test_home_details_valid_index(self, mock_spreadsheet, mock_render):
-        """Test home_details with valid day index"""
+    def test_home_details_valid_date(self, mock_spreadsheet, mock_render):
+        """Test home_details with valid date"""
         mock_schedule_sheet, mock_totals_sheet = self.create_mock_sheets()
         
         # Configure mock spreadsheet
@@ -65,8 +72,8 @@ class TestHomeRoutes(unittest.TestCase):
         
         mock_render.return_value = 'rendered template'
         
-        # Test the route
-        response = self.client.get('/home/0')
+        # Test the route with date-based URL
+        response = self.client.get(f'/home/{self.TEST_DATE_STR}')
         self.assertEqual(response.status_code, 200)
         
         # Verify worksheet calls
@@ -77,30 +84,30 @@ class TestHomeRoutes(unittest.TestCase):
         mock_render.assert_called_once_with(
             'home_details.html',
             day_data=self.SAMPLE_SCHEDULE_DATA[0],
-            day_index=0,
+            date_str=self.TEST_DATE_STR,
             weekly_totals=self.SAMPLE_TOTALS_DATA
         )
     
     @patch('routes.home.spreadsheet')
-    def test_home_details_invalid_index(self, mock_spreadsheet):
-        """Test home_details with invalid day index (should redirect)"""
+    def test_home_details_invalid_date(self, mock_spreadsheet):
+        """Test home_details with invalid date (should redirect)"""
         mock_schedule_sheet, _ = self.create_mock_sheets()
         mock_spreadsheet.worksheet.return_value = mock_schedule_sheet
         
-        # Test with index out of range
-        response = self.client.get('/home/5')
+        # Test with date not in schedule
+        response = self.client.get('/home/2025-12-25')
         self.assertEqual(response.status_code, 302)  # Redirect
         self.assertIn('/', response.location)  # Redirects to home
     
     @patch('routes.home.spreadsheet')
-    def test_home_details_negative_index(self, mock_spreadsheet):
-        """Test home_details with negative day index (Flask returns 404)"""
+    def test_home_details_malformed_date(self, mock_spreadsheet):
+        """Test home_details with malformed date"""
         mock_schedule_sheet, _ = self.create_mock_sheets()
         mock_spreadsheet.worksheet.return_value = mock_schedule_sheet
         
-        # Test with negative index - Flask returns 404 for negative int routes
-        response = self.client.get('/home/-1')
-        self.assertEqual(response.status_code, 404)  # Flask 404 for invalid int
+        # Test with malformed date
+        response = self.client.get('/home/invalid-date')
+        self.assertEqual(response.status_code, 302)  # Should redirect on error
     
     @patch('routes.home.spreadsheet')
     def test_home_details_sheet_error(self, mock_spreadsheet):
@@ -137,8 +144,8 @@ class TestHomeRoutes(unittest.TestCase):
         
         mock_render.return_value = 'rendered template'
         
-        # Test the route
-        response = self.client.get('/home/0')
+        # Test the route with date-based URL
+        response = self.client.get(f'/home/{self.TEST_DATE_STR}')
         self.assertEqual(response.status_code, 200)
         
         # Verify that only September 17, 2025 entries were passed to template
@@ -150,7 +157,7 @@ class TestHomeRoutes(unittest.TestCase):
         mock_render.assert_called_once_with(
             'home_details.html',
             day_data=self.SAMPLE_SCHEDULE_DATA[0],
-            day_index=0,
+            date_str=self.TEST_DATE_STR,
             weekly_totals=expected_filtered_totals
         )
     
@@ -188,7 +195,7 @@ class TestHomeRoutes(unittest.TestCase):
     
     @patch('routes.home.render_template')
     @patch('routes.home.spreadsheet')
-    def test_record_section_form_valid_index(self, mock_spreadsheet, mock_render):
+    def test_record_section_form_valid_date(self, mock_spreadsheet, mock_render):
         """Test record_section_form with valid parameters"""
         mock_schedule_sheet, _ = self.create_mock_sheets()
         mock_roster_sheet = Mock()
@@ -201,7 +208,7 @@ class TestHomeRoutes(unittest.TestCase):
         
         mock_render.return_value = 'rendered template'
         
-        response = self.client.get('/home/0/team/Red/record_section')
+        response = self.client.get(f'/home/{self.TEST_DATE_STR}/team/Red/record_section')
         self.assertEqual(response.status_code, 200)
         
         # Verify correct team kids were filtered
@@ -210,19 +217,19 @@ class TestHomeRoutes(unittest.TestCase):
         mock_render.assert_called_once_with(
             'record_section_form.html',
             day_data=self.SAMPLE_SCHEDULE_DATA[0],
-            day_index=0,
+            date_str=self.TEST_DATE_STR,
             team_name='Red',
             team_kids=expected_team_kids,
             schedule_data=self.SAMPLE_SCHEDULE_DATA
         )
     
     @patch('routes.home.spreadsheet')
-    def test_record_section_form_invalid_index(self, mock_spreadsheet):
-        """Test record_section_form with invalid day index"""
+    def test_record_section_form_invalid_date(self, mock_spreadsheet):
+        """Test record_section_form with invalid date"""
         mock_schedule_sheet, _ = self.create_mock_sheets()
         mock_spreadsheet.worksheet.return_value = mock_schedule_sheet
         
-        response = self.client.get('/home/5/team/Red/record_section')
+        response = self.client.get('/home/2025-12-25/team/Red/record_section')
         self.assertEqual(response.status_code, 302)  # Should redirect
     
     @patch('routes.home.render_template')
@@ -244,7 +251,7 @@ class TestHomeRoutes(unittest.TestCase):
         
         mock_render.return_value = 'rendered template'
         
-        response = self.client.get('/home/0/team/Red')
+        response = self.client.get(f'/home/{self.TEST_DATE_STR}/team/Red')
         self.assertEqual(response.status_code, 200)
         
         # Verify kids_sections grouping
@@ -256,12 +263,12 @@ class TestHomeRoutes(unittest.TestCase):
         self.assertEqual(dict(call_args['kids_sections']), expected_kids_sections)
     
     @patch('routes.home.spreadsheet')
-    def test_home_team_details_invalid_index(self, mock_spreadsheet):
-        """Test home_team_details with invalid day index"""
+    def test_home_team_details_invalid_date(self, mock_spreadsheet):
+        """Test home_team_details with invalid date"""
         mock_schedule_sheet, _ = self.create_mock_sheets()
         mock_spreadsheet.worksheet.return_value = mock_schedule_sheet
         
-        response = self.client.get('/home/5/team/Red')
+        response = self.client.get('/home/2025-12-25/team/Red')
         self.assertEqual(response.status_code, 302)
     
     @patch('routes.home.render_template')
@@ -281,7 +288,7 @@ class TestHomeRoutes(unittest.TestCase):
         
         mock_render.return_value = 'rendered template'
         
-        response = self.client.get('/home/0/team/Red/kid/John%20Doe/section/1.1')
+        response = self.client.get(f'/home/{self.TEST_DATE_STR}/team/Red/kid/John%20Doe/section/1.1')
         self.assertEqual(response.status_code, 200)
         
         mock_render.assert_called_once()
@@ -302,14 +309,14 @@ class TestHomeRoutes(unittest.TestCase):
             'name': 'John Doe',
             'date': 'September 17, 2025',
             'team': 'Red',
-            'day_index': '0',
+            'date_str': self.TEST_DATE_STR,
             'section': '1.1',
             'Section Complete': 'on'
         }
         
         response = self.client.post('/submit_section', data=form_data)
         self.assertEqual(response.status_code, 302)  # Redirect after success
-        self.assertIn('/home/0/team/Red', response.location)
+        self.assertIn(f'/home/{self.TEST_DATE_STR}/team/Red', response.location)
         
         # Verify append_row was called
         mock_sections_sheet.append_row.assert_called_once()
@@ -323,7 +330,7 @@ class TestHomeRoutes(unittest.TestCase):
             'name': 'John Doe',
             'date': 'September 17, 2025',
             'team': 'Red',
-            'day_index': '0',
+            'date_str': self.TEST_DATE_STR,
             'section': '1.1'
         }
         
@@ -357,7 +364,7 @@ class TestHomeRoutes(unittest.TestCase):
         }[name]
         
         form_data = {
-            'day_index': '0',
+            'date_str': self.TEST_DATE_STR,
             'team_name': 'Red',
             'kid_name': 'John Doe',
             'section_name': '1.1',
@@ -366,20 +373,20 @@ class TestHomeRoutes(unittest.TestCase):
         
         response = self.client.post('/edit_section', data=form_data)
         self.assertEqual(response.status_code, 302)
-        self.assertIn('/home/0/team/Red/kid/John%20Doe/section/1.1', response.location)
+        self.assertIn(f'/home/{self.TEST_DATE_STR}/team/Red/kid/John%20Doe/section/1.1', response.location)
         
         # Verify update_cell was called
         mock_sections_sheet.update_cell.assert_called()
     
     @patch('routes.home.spreadsheet')
-    def test_edit_section_post_invalid_index(self, mock_spreadsheet):
-        """Test edit_section POST with invalid day index"""
+    def test_edit_section_post_invalid_date(self, mock_spreadsheet):
+        """Test edit_section POST with invalid date"""
         mock_schedule_sheet = Mock()
         mock_schedule_sheet.get_all_records.return_value = self.SAMPLE_SCHEDULE_DATA
         mock_spreadsheet.worksheet.return_value = mock_schedule_sheet
         
         form_data = {
-            'day_index': '5',  # Invalid index
+            'date_str': '2025-12-25',  # Invalid date not in schedule
             'team_name': 'Red',
             'kid_name': 'John Doe',
             'section_name': '1.1'
@@ -404,7 +411,7 @@ class TestHomeRoutes(unittest.TestCase):
         }[name]
         
         form_data = {
-            'day_index': '0',
+            'date_str': self.TEST_DATE_STR,
             'team_name': 'Red',
             'kid_name': 'John Doe',
             'section_name': '1.1'
@@ -412,7 +419,7 @@ class TestHomeRoutes(unittest.TestCase):
         
         response = self.client.post('/edit_section', data=form_data)
         self.assertEqual(response.status_code, 302)
-        self.assertIn('/home/0/team/Red/kid/John%20Doe/section/1.1', response.location)
+        self.assertIn(f'/home/{self.TEST_DATE_STR}/team/Red/kid/John%20Doe/section/1.1', response.location)
     
     @patch('routes.home.spreadsheet')
     def test_edit_section_post_error(self, mock_spreadsheet):
@@ -420,7 +427,7 @@ class TestHomeRoutes(unittest.TestCase):
         mock_spreadsheet.worksheet.side_effect = Exception("Sheet error")
         
         form_data = {
-            'day_index': '0',
+            'date_str': self.TEST_DATE_STR,
             'team_name': 'Red',
             'kid_name': 'John Doe',
             'section_name': '1.1'

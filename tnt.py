@@ -4,10 +4,13 @@ from collections import defaultdict
 from urllib.parse import unquote
 
 from models.sheets import get_spreadsheet
-from models.utils import dates_match, find_column_index
+from models.utils import dates_match, find_column_index, date_to_url
 from routes.home import register_home_routes
 
 app = Flask(__name__)
+
+# Add template filters
+app.jinja_env.filters['date_to_url'] = date_to_url
 
 # Setup Google Sheets connection
 spreadsheet = get_spreadsheet()

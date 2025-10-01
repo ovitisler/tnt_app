@@ -17,7 +17,7 @@
     {% if weekly_totals %}
     <div class="teams-grid">
         {% for team_data in weekly_totals %}
-        <div class="team-card" onclick="window.location.href='/home/{{ day_index }}/team/{{ team_data.Team }}'">
+        <div class="team-card" onclick="window.location.href='/home/{{ date_str }}/team/{{ team_data.Team }}'">
             <div class="team-header {{ team_data.Team|lower }}">
                 {{ team_data.Team }} Team
             </div>
