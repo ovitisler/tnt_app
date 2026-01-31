@@ -8,8 +8,38 @@ import time
 from models.metrics import log_api_call, log_rate_limit_error, log_cache_invalidation, get_metrics as _get_metrics
 from models.test_mode import get_simulate_rate_limit
 
-# Cache configuration
-CACHE_TTL_SECONDS = 120
+# Sheet name constants (single source of truth)
+SCHEDULE_SHEET = 'Schedule'
+ATTENDANCE_SCHEDULE_SHEET = 'Attendance Schedule'
+MASTER_ROSTER_SHEET = 'Master Roster'
+WEEKLY_TOTALS_SHEET = 'Weekly Totals'
+WEEKLY_ATTENDANCE_TOTALS_SHEET = 'Weekly Attendance Totals'
+COMPLETED_SECTIONS_SHEET = 'Completed Sections RAW'
+ATTENDANCE_ENTRIES_SHEET = 'Attendance Entries RAW'
+
+# Cache configuration - tiered TTLs based on how often data changes
+CACHE_TTL_STATIC = 86400    # 1 day - sheets that rarely change
+CACHE_TTL_DYNAMIC = 120     # 2 min - sheets that change with writes
+
+# Static sheets - only change when admin updates them (monthly or less)
+STATIC_SHEETS = [
+    SCHEDULE_SHEET,
+    ATTENDANCE_SCHEDULE_SHEET,
+    MASTER_ROSTER_SHEET,
+]
+
+# Sheets to invalidate when writing to RAW sheets
+# RAW sheets trigger Totals recalculation
+INVALIDATION_MAP = {
+    COMPLETED_SECTIONS_SHEET: [COMPLETED_SECTIONS_SHEET, WEEKLY_TOTALS_SHEET],
+    ATTENDANCE_ENTRIES_SHEET: [ATTENDANCE_ENTRIES_SHEET, WEEKLY_ATTENDANCE_TOTALS_SHEET],
+}
+
+def _get_ttl_for_sheet(sheet_name):
+    """Get the appropriate TTL for a sheet based on how often it changes"""
+    if sheet_name in STATIC_SHEETS:
+        return CACHE_TTL_STATIC
+    return CACHE_TTL_DYNAMIC
 
 # Cache storage: {sheet_name: {'data': [...], 'time': timestamp, 'size_bytes': int}}
 _cache = {}
@@ -56,11 +86,12 @@ def get_sheet_data(sheet_name):
         log_rate_limit_error(sheet_name, simulated=True)
         raise RateLimitError()
 
-    # Check cache
+    # Check cache with tiered TTL
     if sheet_name in _cache:
         cached = _cache[sheet_name]
         age = now - cached['time']
-        if age < CACHE_TTL_SECONDS:
+        ttl = _get_ttl_for_sheet(sheet_name)
+        if age < ttl:
             log_api_call('read', sheet_name, cached['size_bytes'], source='cache')
             return cached['data']
 
@@ -89,10 +120,25 @@ def get_sheet_data(sheet_name):
 def get_worksheet(sheet_name):
     """Get a worksheet for direct operations (writes, updates)"""
     log_api_call('write', sheet_name, source='google')
-    # Invalidate cache for this sheet since we're about to modify it
-    if sheet_name in _cache:
-        del _cache[sheet_name]
-        log_cache_invalidation(sheet_name)
+
+    # Smart cache invalidation based on what's being written
+    if sheet_name in INVALIDATION_MAP:
+        sheets_to_invalidate = INVALIDATION_MAP[sheet_name]
+        if sheets_to_invalidate is None:
+            # None means invalidate everything (e.g., for testing)
+            invalidate_cache()
+        else:
+            # Only invalidate related sheets
+            for related_sheet in sheets_to_invalidate:
+                if related_sheet in _cache:
+                    del _cache[related_sheet]
+                    log_cache_invalidation(related_sheet)
+    else:
+        # Unknown sheet - just invalidate itself
+        if sheet_name in _cache:
+            del _cache[sheet_name]
+            log_cache_invalidation(sheet_name)
+
     spreadsheet = _get_spreadsheet_instance()
     return spreadsheet.worksheet(sheet_name)
 
@@ -109,7 +155,23 @@ def invalidate_cache(sheet_name=None):
 
 def get_metrics():
     """Get current metrics including cache state"""
-    return _get_metrics(
+    now = time.time()
+    cache_info = {}
+    for sheet_name, cached in _cache.items():
+        age = now - cached['time']
+        ttl = _get_ttl_for_sheet(sheet_name)
+        cache_info[sheet_name] = {
+            'age_seconds': int(age),
+            'ttl_seconds': ttl,
+            'expires_in': int(ttl - age),
+            'type': 'static' if sheet_name in STATIC_SHEETS else 'dynamic'
+        }
+
+    metrics = _get_metrics(
         cache_keys=list(_cache.keys()),
         simulate_rate_limit=get_simulate_rate_limit()
     )
+    metrics['cache_details'] = cache_info
+    metrics['ttl_static'] = CACHE_TTL_STATIC
+    metrics['ttl_dynamic'] = CACHE_TTL_DYNAMIC
+    return metrics

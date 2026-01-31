@@ -3,14 +3,15 @@ from datetime import datetime
 from collections import defaultdict
 from urllib.parse import unquote
 
-from models.sheets import get_sheet_data, get_worksheet
+from models.sheets import (
+    get_sheet_data,
+    get_worksheet,
+    SCHEDULE_SHEET,
+    WEEKLY_TOTALS_SHEET,
+    COMPLETED_SECTIONS_SHEET,
+    MASTER_ROSTER_SHEET,
+)
 from models.utils import dates_match, find_day_by_date, date_to_url, url_to_date
-
-# Sheet name constants
-SCHEDULE_SHEET = 'Schedule'
-WEEKLY_TOTALS_SHEET = 'Weekly Totals'
-COMPLETED_SECTIONS_SHEET = 'Completed Sections RAW'
-MASTER_ROSTER_SHEET = 'Master Roster'
 
 def register_home_routes(app):
     """Register all home-related routes"""

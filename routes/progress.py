@@ -1,11 +1,12 @@
 from flask import render_template, request, redirect, url_for
 from urllib.parse import unquote
 
-from models.sheets import get_sheet_data, get_worksheet
-
-# Sheet name constants
-MASTER_ROSTER_SHEET = 'Master Roster'
-COMPLETED_SECTIONS_SHEET = 'Completed Sections RAW'
+from models.sheets import (
+    get_sheet_data,
+    get_worksheet,
+    MASTER_ROSTER_SHEET,
+    COMPLETED_SECTIONS_SHEET,
+)
 
 def register_progress_routes(app):
     """Register all progress-related routes"""
