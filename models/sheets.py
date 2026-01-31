@@ -1,79 +1,30 @@
 import gspread
+from gspread.exceptions import APIError
 from oauth2client.service_account import ServiceAccountCredentials
 import os
 import json
 import time
-from datetime import datetime
-from collections import deque
 
-# Simple metrics tracking
-_metrics = {
-    'total_reads': 0,
-    'total_writes': 0,
-    'total_bytes': 0,
-    'recent_calls': deque(maxlen=100),  # last 100 calls with timestamps
-}
+from models.metrics import log_api_call, log_rate_limit_error, log_cache_invalidation, get_metrics as _get_metrics
+from models.test_mode import get_simulate_rate_limit
 
-def _format_bytes(num_bytes):
-    """Format bytes as human-readable string"""
-    if num_bytes < 1024:
-        return f"{num_bytes}B"
-    elif num_bytes < 1024 * 1024:
-        return f"{num_bytes / 1024:.1f}KB"
-    else:
-        return f"{num_bytes / (1024 * 1024):.2f}MB"
+# Cache configuration
+CACHE_TTL_SECONDS = 30
 
-def _log_api_call(operation, sheet_name, size_bytes=None):
-    """Log an API call for metrics"""
-    now = time.time()
-    call_record = {
-        'time': now,
-        'timestamp': datetime.now().strftime('%H:%M:%S'),
-        'operation': operation,
-        'sheet': sheet_name,
-        'size_bytes': size_bytes
-    }
-    _metrics['recent_calls'].append(call_record)
+# Cache storage: {sheet_name: {'data': [...], 'time': timestamp, 'size_bytes': int}}
+_cache = {}
 
-    if operation == 'read':
-        _metrics['total_reads'] += 1
-    else:
-        _metrics['total_writes'] += 1
-
-    if size_bytes:
-        _metrics['total_bytes'] += size_bytes
-
-    # Calculate calls in last minute
-    one_min_ago = now - 60
-    calls_last_min = sum(1 for c in _metrics['recent_calls'] if c['time'] > one_min_ago)
-
-    size_str = f" | Size: {_format_bytes(size_bytes)}" if size_bytes else ""
-    print(f"[SHEETS API] {operation.upper()} '{sheet_name}'{size_str} | "
-          f"Last 60s: {calls_last_min} calls | "
-          f"Total: {_metrics['total_reads']}R / {_metrics['total_writes']}W / {_format_bytes(_metrics['total_bytes'])}")
-
-def get_metrics():
-    """Get current API metrics"""
-    now = time.time()
-    one_min_ago = now - 60
-    calls_last_min = [c for c in _metrics['recent_calls'] if c['time'] > one_min_ago]
-    bytes_last_min = sum(c.get('size_bytes') or 0 for c in calls_last_min)
-    return {
-        'total_reads': _metrics['total_reads'],
-        'total_writes': _metrics['total_writes'],
-        'total_bytes': _metrics['total_bytes'],
-        'total_bytes_formatted': _format_bytes(_metrics['total_bytes']),
-        'calls_last_minute': len(calls_last_min),
-        'bytes_last_minute': bytes_last_min,
-        'bytes_last_minute_formatted': _format_bytes(bytes_last_min),
-        'recent_calls': list(calls_last_min)
-    }
+class RateLimitError(Exception):
+    """Raised when Google Sheets API rate limit is hit"""
+    def __init__(self, message="Google Sheets rate limit exceeded. Please wait a moment and try again."):
+        self.message = message
+        super().__init__(self.message)
 
 def get_google_creds():
     """Get Google credentials either from file or environment variable"""
     scope = ['https://spreadsheets.google.com/feeds',
              'https://www.googleapis.com/auth/drive']
-    
+
     if 'GOOGLE_SHEETS_CREDS' in os.environ:
         creds_dict = json.loads(os.environ['GOOGLE_SHEETS_CREDS'])
         return ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
@@ -97,15 +48,68 @@ def _get_spreadsheet_instance():
     return _spreadsheet
 
 def get_sheet_data(sheet_name):
-    """Get data from any sheet"""
-    spreadsheet = _get_spreadsheet_instance()
-    data = spreadsheet.worksheet(sheet_name).get_all_records()
+    """Get data from any sheet, with caching"""
+    now = time.time()
+
+    # Check for simulated rate limit (for testing)
+    if get_simulate_rate_limit():
+        log_rate_limit_error(sheet_name, simulated=True)
+        raise RateLimitError()
+
+    # Check cache
+    if sheet_name in _cache:
+        cached = _cache[sheet_name]
+        age = now - cached['time']
+        if age < CACHE_TTL_SECONDS:
+            log_api_call('read', sheet_name, cached['size_bytes'], source='cache')
+            return cached['data']
+
+    # Cache miss - fetch from Google
+    try:
+        spreadsheet = _get_spreadsheet_instance()
+        data = spreadsheet.worksheet(sheet_name).get_all_records()
+    except APIError as e:
+        if e.response.status_code == 429:
+            log_rate_limit_error(sheet_name)
+            raise RateLimitError()
+        raise
+
     size_bytes = len(json.dumps(data).encode('utf-8'))
-    _log_api_call('read', sheet_name, size_bytes)
+
+    # Store in cache
+    _cache[sheet_name] = {
+        'data': data,
+        'time': now,
+        'size_bytes': size_bytes
+    }
+
+    log_api_call('read', sheet_name, size_bytes, source='google')
     return data
 
 def get_worksheet(sheet_name):
     """Get a worksheet for direct operations (writes, updates)"""
-    _log_api_call('write', sheet_name)
+    log_api_call('write', sheet_name, source='google')
+    # Invalidate cache for this sheet since we're about to modify it
+    if sheet_name in _cache:
+        del _cache[sheet_name]
+        log_cache_invalidation(sheet_name)
     spreadsheet = _get_spreadsheet_instance()
     return spreadsheet.worksheet(sheet_name)
+
+def invalidate_cache(sheet_name=None):
+    """Manually invalidate cache. If no sheet_name, invalidates all."""
+    global _cache
+    if sheet_name:
+        if sheet_name in _cache:
+            del _cache[sheet_name]
+            log_cache_invalidation(sheet_name)
+    else:
+        _cache = {}
+        log_cache_invalidation()
+
+def get_metrics():
+    """Get current metrics including cache state"""
+    return _get_metrics(
+        cache_keys=list(_cache.keys()),
+        simulate_rate_limit=get_simulate_rate_limit()
+    )
