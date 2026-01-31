@@ -70,6 +70,20 @@ def log_cache_invalidation(sheet_name=None):
     else:
         print("[SHEETS] 🗑️ All cache invalidated")
 
+def reset_metrics():
+    """Reset all metrics to zero"""
+    global _metrics
+    _metrics = {
+        'total_reads': 0,
+        'total_writes': 0,
+        'total_bytes': 0,
+        'cache_hits': 0,
+        'cache_misses': 0,
+        'rate_limit_errors': 0,
+        'recent_calls': deque(maxlen=100),
+    }
+    print("[METRICS] 🔄 All metrics reset")
+
 def get_metrics(cache_keys=None, simulate_rate_limit=False):
     """Get current API metrics"""
     now = time.time()

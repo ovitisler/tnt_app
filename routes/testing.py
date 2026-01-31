@@ -1,7 +1,16 @@
-from flask import jsonify
+from flask import jsonify, request
+from datetime import datetime
+import random
 
 from models.test_mode import set_simulate_rate_limit, get_simulate_rate_limit
-from models.sheets import invalidate_cache
+from models.sheets import invalidate_cache, get_worksheet
+from models.metrics import reset_metrics
+
+# Test data for realistic write simulation
+TEST_NAMES = ["Test Kid A", "Test Kid B", "Test Kid C", "Test Kid D", "Test Kid E"]
+TEST_TEAMS = ["Red", "Blue", "Green", "Yellow"]
+TEST_SECTIONS = ["1.1", "1.2", "1.3", "2.1", "2.2", "3.1"]
+LOAD_TEST_SHEET = "Load Test Entries"
 
 def register_testing_routes(app):
     """Register test/debug routes (development only)"""
@@ -31,3 +40,71 @@ def register_testing_routes(app):
     def test_cache_clear():
         invalidate_cache()
         return jsonify({'message': 'Cache cleared'})
+
+    @app.route('/test/reset')
+    def test_reset():
+        """Reset all metrics and clear cache - fresh start for testing"""
+        reset_metrics()
+        invalidate_cache()
+        return jsonify({'message': 'Metrics reset and cache cleared'})
+
+    @app.route('/test/write', methods=['POST'])
+    def test_write():
+        """
+        Write a test row to the Load Test Entries sheet.
+        Simulates a real write by also invalidating all caches.
+        """
+        try:
+            # Get data from request or generate random test data
+            data = request.get_json() or {}
+            name = data.get('name', random.choice(TEST_NAMES))
+            team = data.get('team', random.choice(TEST_TEAMS))
+            section = data.get('section', random.choice(TEST_SECTIONS))
+            write_type = data.get('type', 'load_test')
+
+            # Write to the test sheet
+            worksheet = get_worksheet(LOAD_TEST_SHEET)
+            row = [
+                datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                name,
+                team,
+                datetime.now().strftime('%Y-%m-%d'),
+                section,
+                write_type
+            ]
+            worksheet.append_row(row, value_input_option='USER_ENTERED')
+
+            # Invalidate ALL caches to simulate real write behavior
+            invalidate_cache()
+
+            return jsonify({
+                'success': True,
+                'message': 'Test row written and all caches invalidated',
+                'row': row
+            })
+
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 500
+
+    @app.route('/test/write/clear', methods=['POST'])
+    def test_write_clear():
+        """Clear all rows from the Load Test Entries sheet (except header)"""
+        try:
+            worksheet = get_worksheet(LOAD_TEST_SHEET)
+            # Get all rows and delete all except header
+            all_rows = worksheet.get_all_values()
+            if len(all_rows) > 1:
+                # Delete rows 2 to end (keep header)
+                worksheet.delete_rows(2, len(all_rows))
+            return jsonify({
+                'success': True,
+                'message': f'Cleared {len(all_rows) - 1} test rows'
+            })
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 500

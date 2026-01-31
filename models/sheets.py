@@ -9,7 +9,7 @@ from models.metrics import log_api_call, log_rate_limit_error, log_cache_invalid
 from models.test_mode import get_simulate_rate_limit
 
 # Cache configuration
-CACHE_TTL_SECONDS = 30
+CACHE_TTL_SECONDS = 120
 
 # Cache storage: {sheet_name: {'data': [...], 'time': timestamp, 'size_bytes': int}}
 _cache = {}
