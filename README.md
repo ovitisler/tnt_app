@@ -16,8 +16,17 @@ git clone <your-repo-url>
 cd tnt
 ```
 
-2. Install dependencies:
+2. Create virtual environment and install dependencies:
 ```bash
+uv venv .venv
+source .venv/bin/activate
+uv pip install -r requirements.txt
+```
+
+Or with standard tools:
+```bash
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
@@ -30,8 +39,10 @@ pip install -r requirements.txt
 
 4. Run the application:
 ```bash
+source .venv/bin/activate  # if not already activated
 python tnt.py
 ```
+The app will be available at `http://localhost:5001`
 
 ## Environment Variables
 The following environment variables need to be set:

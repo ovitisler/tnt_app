@@ -2,7 +2,7 @@ from flask import render_template, request, redirect, url_for
 from datetime import datetime
 from urllib.parse import unquote
 
-from models.sheets import get_spreadsheet
+from models.sheets import get_sheet_data, get_worksheet
 from models.utils import dates_match, find_day_by_date, url_to_date
 
 # Sheet name constants
@@ -10,14 +10,6 @@ ATTENDANCE_SCHEDULE_SHEET = 'Attendance Schedule'
 WEEKLY_ATTENDANCE_TOTALS_SHEET = 'Weekly Attendance Totals'
 ATTENDANCE_ENTRIES_SHEET = 'Attendance Entries RAW'
 MASTER_ROSTER_SHEET = 'Master Roster'
-
-# Get spreadsheet instance
-spreadsheet = get_spreadsheet()
-
-# Helper function
-def get_sheet_data(sheet_name):
-    """Get data from any sheet"""
-    return spreadsheet.worksheet(sheet_name).get_all_records()
 
 def register_attendance_routes(app):
     """Register all attendance-related routes"""
@@ -166,7 +158,7 @@ def register_attendance_routes(app):
             date_str = request.form.get('date_str')
             
             # Get attendance entries sheet and headers
-            attendance_entries_sheet = spreadsheet.worksheet(ATTENDANCE_ENTRIES_SHEET)
+            attendance_entries_sheet = get_worksheet(ATTENDANCE_ENTRIES_SHEET)
             headers = attendance_entries_sheet.row_values(1)
             
             # Create data mapping
@@ -214,7 +206,7 @@ def register_attendance_routes(app):
             
             if day_data:
                 # Get attendance entries sheet
-                attendance_entries_sheet = spreadsheet.worksheet(ATTENDANCE_ENTRIES_SHEET)
+                attendance_entries_sheet = get_worksheet(ATTENDANCE_ENTRIES_SHEET)
                 all_entries = attendance_entries_sheet.get_all_records()
                 
                 # Find the row to update

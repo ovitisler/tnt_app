@@ -1,19 +1,11 @@
 from flask import render_template, request, redirect, url_for
 from urllib.parse import unquote
 
-from models.sheets import get_spreadsheet
+from models.sheets import get_sheet_data, get_worksheet
 
 # Sheet name constants
 MASTER_ROSTER_SHEET = 'Master Roster'
 COMPLETED_SECTIONS_SHEET = 'Completed Sections RAW'
-
-# Get spreadsheet instance
-spreadsheet = get_spreadsheet()
-
-# Helper function
-def get_sheet_data(sheet_name):
-    """Get data from any sheet"""
-    return spreadsheet.worksheet(sheet_name).get_all_records()
 
 def register_progress_routes(app):
     """Register all progress-related routes"""
@@ -93,7 +85,7 @@ def register_progress_routes(app):
             section_index = int(request.form.get('section_index'))
             
             # Get all completed sections for this student
-            completed_sections_sheet = spreadsheet.worksheet(COMPLETED_SECTIONS_SHEET)
+            completed_sections_sheet = get_worksheet(COMPLETED_SECTIONS_SHEET)
             all_sections = completed_sections_sheet.get_all_records()
             
             # Filter sections for this student

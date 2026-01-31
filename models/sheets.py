@@ -20,3 +20,22 @@ def get_spreadsheet():
     client = gspread.authorize(creds)
     sheet_name = os.environ.get('SHEET_NAME', 'TNT_App_Data')
     return client.open(sheet_name)
+
+_spreadsheet = None
+
+def _get_spreadsheet_instance():
+    """Get or create the spreadsheet singleton"""
+    global _spreadsheet
+    if _spreadsheet is None:
+        _spreadsheet = get_spreadsheet()
+    return _spreadsheet
+
+def get_sheet_data(sheet_name):
+    """Get data from any sheet"""
+    spreadsheet = _get_spreadsheet_instance()
+    return spreadsheet.worksheet(sheet_name).get_all_records()
+
+def get_worksheet(sheet_name):
+    """Get a worksheet for direct operations (writes, updates)"""
+    spreadsheet = _get_spreadsheet_instance()
+    return spreadsheet.worksheet(sheet_name)
