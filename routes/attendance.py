@@ -13,6 +13,10 @@ from models.sheets import (
     ATTENDANCE_ENTRIES_SHEET,
     MASTER_ROSTER_SHEET,
 )
+from models.fields import (
+    NAME, TEAM, DATE, TIMESTAMP, GROUP,
+    PRESENT, HAS_BIBLE, WEARING_SHIRT, HAS_BOOK, DID_HOMEWORK, HAS_DUES,
+)
 from models.utils import dates_match, find_day_by_date, url_to_date
 
 def register_attendance_routes(app):
@@ -43,7 +47,7 @@ def register_attendance_routes(app):
                 all_totals = get_sheet_data(WEEKLY_ATTENDANCE_TOTALS_SHEET)
                 
                 # Filter totals by matching date
-                date_totals = [row for row in all_totals if row.get('Date') == day_data.get('Date')]
+                date_totals = [row for row in all_totals if row.get(DATE) == day_data.get(DATE)]
                 
                 return render_template('attendance_details.html', 
                                      day_data=day_data, 
@@ -69,17 +73,17 @@ def register_attendance_routes(app):
                 all_totals = get_sheet_data(WEEKLY_ATTENDANCE_TOTALS_SHEET)
                 
                 # Find the specific team data
-                team_data = next((row for row in all_totals 
-                                if row.get('Date') == day_data.get('Date') 
-                                and row.get('Team', '').lower() == team_name.lower()), None)
+                team_data = next((row for row in all_totals
+                                if row.get(DATE) == day_data.get(DATE)
+                                and row.get(TEAM, '').lower() == team_name.lower()), None)
                 
                 # Get attendance entries for this date and team
                 all_entries = get_sheet_data(ATTENDANCE_ENTRIES_SHEET)
                 
                 # Filter entries by date and team using flexible date matching
-                checked_in_kids = [entry for entry in all_entries 
-                                 if dates_match(entry.get('Date'), day_data.get('Date')) 
-                                 and entry.get('Team', '').lower() == team_name.lower()]
+                checked_in_kids = [entry for entry in all_entries
+                                 if dates_match(entry.get(DATE), day_data.get(DATE))
+                                 and entry.get(TEAM, '').lower() == team_name.lower()]
                 
                 return render_template('team_attendance_details.html', 
                                      day_data=day_data, 
@@ -110,10 +114,10 @@ def register_attendance_routes(app):
                 kid_name = unquote(kid_name)
                 
                 # Find the specific kid's entry
-                kid_entry = next((entry for entry in all_entries 
-                                if dates_match(entry.get('Date'), day_data.get('Date')) 
-                                and entry.get('Team', '').lower() == team_name.lower()
-                                and entry.get('Name', '').lower() == kid_name.lower()), None)
+                kid_entry = next((entry for entry in all_entries
+                                if dates_match(entry.get(DATE), day_data.get(DATE))
+                                and entry.get(TEAM, '').lower() == team_name.lower()
+                                and entry.get(NAME, '').lower() == kid_name.lower()), None)
                 
                 return render_template('kid_attendance_details.html', 
                                      day_data=day_data, 
@@ -139,7 +143,7 @@ def register_attendance_routes(app):
             if day_data:
                 # Get team kids from Master Roster
                 roster_data = get_sheet_data(MASTER_ROSTER_SHEET)
-                team_kids = [row['Name'] for row in roster_data if row.get('Group', '').lower() == team_name.lower()]
+                team_kids = [row[NAME] for row in roster_data if row.get(GROUP, '').lower() == team_name.lower()]
                 
                 return render_template('checkin_form.html',
                                      day_data=day_data,
@@ -167,16 +171,16 @@ def register_attendance_routes(app):
             
             # Create data mapping
             data_map = {
-                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'Name': name,
-                'Team': team,
-                'Date': date,
-                'Present': True if 'present' in request.form else False,
-                'Has Bible': True if 'has_bible' in request.form else False,
-                'Wearing Shirt?': True if 'wearing_shirt' in request.form else False,
-                'Has Book?': True if 'has_book' in request.form else False,
-                'Did Homework?': True if 'did_homework' in request.form else False,
-                'Has Dues?': True if 'has_dues' in request.form else False
+                TIMESTAMP: datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                NAME: name,
+                TEAM: team,
+                DATE: date,
+                PRESENT: 'present' in request.form,
+                HAS_BIBLE: 'has_bible' in request.form,
+                WEARING_SHIRT: 'wearing_shirt' in request.form,
+                HAS_BOOK: 'has_book' in request.form,
+                DID_HOMEWORK: 'did_homework' in request.form,
+                HAS_DUES: 'has_dues' in request.form,
             }
             
             # Build row in correct order based on headers
@@ -220,9 +224,9 @@ def register_attendance_routes(app):
                 
                 # Find the row to update
                 for i, entry in enumerate(all_entries):
-                    if (dates_match(entry.get('Date'), day_data.get('Date')) 
-                        and entry.get('Team', '').lower() == team_name.lower()
-                        and entry.get('Name', '').lower() == kid_name.lower()):
+                    if (dates_match(entry.get(DATE), day_data.get(DATE))
+                        and entry.get(TEAM, '').lower() == team_name.lower()
+                        and entry.get(NAME, '').lower() == kid_name.lower()):
                         
                         # Update the row with form data
                         row_num = i + 2  # +2 because sheets are 1-indexed and we skip header
@@ -231,7 +235,7 @@ def register_attendance_routes(app):
                         headers = attendance_entries_sheet.row_values(1)
                         
                         # Update all editable fields based on form state
-                        protected_fields = ['date_str', 'team_name', 'kid_name', 'Name', 'Team', 'Date', 'Timestamp', 'timestamp']
+                        protected_fields = ['date_str', 'team_name', 'kid_name', NAME, TEAM, DATE, 'Timestamp', TIMESTAMP]
                         updates = {}
 
                         for field_name in entry.keys():
@@ -245,11 +249,12 @@ def register_attendance_routes(app):
                                     continue
 
                         # Write-through: update cache
+                        entry_date = day_data.get(DATE)
                         cache_update_row(
                             ATTENDANCE_ENTRIES_SHEET,
-                            lambda row: (dates_match(row.get('Date'), day_data.get('Date'))
-                                        and row.get('Team', '').lower() == team_name.lower()
-                                        and row.get('Name', '').lower() == kid_name.lower()),
+                            lambda row: (dates_match(row.get(DATE), entry_date)
+                                        and row.get(TEAM, '').lower() == team_name.lower()
+                                        and row.get(NAME, '').lower() == kid_name.lower()),
                             updates
                         )
                         # Trigger background refresh for computed Totals sheet

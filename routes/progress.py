@@ -9,6 +9,7 @@ from models.sheets import (
     MASTER_ROSTER_SHEET,
     COMPLETED_SECTIONS_SHEET,
 )
+from models.fields import NAME, TEAM, DATE, TIMESTAMP, SECTION, SILVER_CREDIT, GOLD_CREDIT
 
 def register_progress_routes(app):
     """Register all progress-related routes"""
@@ -30,18 +31,18 @@ def register_progress_routes(app):
             
             # Get student info from Master Roster
             roster_data = get_sheet_data(MASTER_ROSTER_SHEET)
-            student_info = next((student for student in roster_data if student.get('Name', '').lower() == student_name.lower()), None)
+            student_info = next((student for student in roster_data if student.get(NAME, '').lower() == student_name.lower()), None)
             
             # Get all completed sections for this student
             all_sections = get_sheet_data(COMPLETED_SECTIONS_SHEET)
             
             # Filter sections for this student
-            student_sections = [section for section in all_sections if section.get('Name', '').lower() == student_name.lower()]
-            
+            student_sections = [section for section in all_sections if section.get(NAME, '').lower() == student_name.lower()]
+
             # Calculate stats
             total_sections = len(student_sections)
-            silver_earned = sum(1 for section in student_sections if section.get('Silver Credit', '').lower() in ['true', 'yes', '1'])
-            gold_earned = sum(1 for section in student_sections if section.get('Gold Credit', '').lower() in ['true', 'yes', '1'])
+            silver_earned = sum(1 for section in student_sections if str(section.get(SILVER_CREDIT, '')).lower() in ['true', 'yes', '1'])
+            gold_earned = sum(1 for section in student_sections if str(section.get(GOLD_CREDIT, '')).lower() in ['true', 'yes', '1'])
             
             return render_template('student_progress.html',
                                  student_name=student_name,
@@ -57,16 +58,16 @@ def register_progress_routes(app):
     def student_section_details(student_name, section_index):
         try:
             student_name = unquote(student_name)
-            
+
             # Get all completed sections for this student
             all_sections = get_sheet_data(COMPLETED_SECTIONS_SHEET)
-            
+
             # Filter sections for this student
-            student_sections = [section for section in all_sections if section.get('Name', '').lower() == student_name.lower()]
-            
+            student_sections = [section for section in all_sections if section.get(NAME, '').lower() == student_name.lower()]
+
             if 0 <= section_index < len(student_sections):
                 section_entry = student_sections[section_index]
-                
+
                 return render_template('student_section_details.html',
                                      student_name=student_name,
                                      section_entry=section_entry,
@@ -92,16 +93,16 @@ def register_progress_routes(app):
             all_sections = completed_sections_sheet.get_all_records()
             
             # Filter sections for this student
-            student_sections = [section for section in all_sections if section.get('Name', '').lower() == student_name.lower()]
-            
+            student_sections = [section for section in all_sections if section.get(NAME, '').lower() == student_name.lower()]
+
             if 0 <= section_index < len(student_sections):
                 target_section = student_sections[section_index]
-                
+
                 # Find the actual row in the sheet
                 for i, entry in enumerate(all_sections):
-                    if (entry.get('Name', '').lower() == student_name.lower()
-                        and entry.get('Date') == target_section.get('Date')
-                        and str(entry.get('Section', '')) == str(target_section.get('Section', ''))):
+                    if (entry.get(NAME, '').lower() == student_name.lower()
+                        and entry.get(DATE) == target_section.get(DATE)
+                        and str(entry.get(SECTION, '')) == str(target_section.get(SECTION, ''))):
                         
                         # Update the row with form data
                         row_num = i + 2  # +2 because sheets are 1-indexed and we skip header
@@ -110,7 +111,7 @@ def register_progress_routes(app):
                         headers = completed_sections_sheet.row_values(1)
                         
                         # Update all editable fields based on form state
-                        protected_fields = ['student_name', 'section_index', 'Name', 'Team', 'Date', 'Section', 'Timestamp', 'timestamp']
+                        protected_fields = ['student_name', 'section_index', NAME, TEAM, DATE, SECTION, 'Timestamp', TIMESTAMP]
                         updates = {}
 
                         for field_name in entry.keys():
@@ -124,13 +125,13 @@ def register_progress_routes(app):
                                     continue
 
                         # Write-through: update cache
-                        target_date = target_section.get('Date')
-                        target_section_val = str(target_section.get('Section', ''))
+                        target_date = target_section.get(DATE)
+                        target_section_val = str(target_section.get(SECTION, ''))
                         cache_update_row(
                             COMPLETED_SECTIONS_SHEET,
-                            lambda row: (row.get('Name', '').lower() == student_name.lower()
-                                        and row.get('Date') == target_date
-                                        and str(row.get('Section', '')) == target_section_val),
+                            lambda row: (row.get(NAME, '').lower() == student_name.lower()
+                                        and row.get(DATE) == target_date
+                                        and str(row.get(SECTION, '')) == target_section_val),
                             updates
                         )
                         # Trigger background refresh for computed Totals sheet
