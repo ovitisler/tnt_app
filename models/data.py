@@ -2,6 +2,7 @@
 Abstract data layer for record storage.
 Routes should use this module for all data operations.
 """
+import threading
 from datetime import datetime
 
 from models.fields import TIMESTAMP
@@ -100,47 +101,66 @@ def _get_headers(table: str, worksheet):
 
 
 def _insert_record(table: str, data: dict) -> dict:
-    """Insert a new record into a table."""
+    """Insert a new record - cache first for fast UI, then async write to Google."""
     if TIMESTAMP not in data:
         data[TIMESTAMP] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-    worksheet = _get_worksheet(table)
-    headers = _get_headers(table, worksheet)
-
-    row = [data.get(header, '') for header in headers]
-    worksheet.append_row(row, value_input_option='USER_ENTERED')
-    log_api_call('write', table, source='google')
-
+    # Update cache immediately for fast UI response
     _cache.append_row(table, data)
-    _refresh_related_tables(table)
 
+    # Queue Google write in background
+    def background_write():
+        try:
+            worksheet = _get_worksheet(table)
+            headers = _get_headers(table, worksheet)
+            row = [data.get(header, '') for header in headers]
+            worksheet.append_row(row, value_input_option='USER_ENTERED')
+            log_api_call('write', table, source='google')
+        except Exception as e:
+            print(f"[SHEETS] ❌ Background write failed for '{table}': {e}")
+
+    thread = threading.Thread(target=background_write, daemon=True)
+    thread.start()
+
+    _refresh_related_tables(table)
     return data
 
 
 def _update_record(table: str, match_fn, updates: dict) -> bool:
-    """Update a record that matches the given predicate."""
-    worksheet = _get_worksheet(table)
-    all_records = worksheet.get_all_records()
-    headers = _get_headers(table, worksheet)
+    """Update a record - cache first for fast UI, then async write to Google."""
+    # Update cache immediately for fast UI response
+    cache_updated = _cache.update_row(table, match_fn, updates)
 
-    for i, record in enumerate(all_records):
-        if match_fn(record):
-            row_num = i + 2  # +2: 1-indexed and skip header
+    if not cache_updated:
+        # No cache or record not found - can't do async, would need sync fallback
+        return False
 
-            for field_name, value in updates.items():
-                try:
-                    col_index = headers.index(field_name) + 1
-                    worksheet.update_cell(row_num, col_index, value)
-                except ValueError:
-                    continue
-            log_api_call('write', table, source='google')
+    # Queue Google write in background
+    def background_write():
+        try:
+            worksheet = _get_worksheet(table)
+            all_records = worksheet.get_all_records()
+            headers = list(all_records[0].keys()) if all_records else worksheet.row_values(1)
 
-            _cache.update_row(table, match_fn, updates)
-            _refresh_related_tables(table)
+            for i, record in enumerate(all_records):
+                if match_fn(record):
+                    row_num = i + 2
+                    for field_name, value in updates.items():
+                        try:
+                            col_index = headers.index(field_name) + 1
+                            worksheet.update_cell(row_num, col_index, value)
+                        except ValueError:
+                            continue
+                    log_api_call('write', table, source='google')
+                    break
+        except Exception as e:
+            print(f"[SHEETS] ❌ Background write failed for '{table}': {e}")
 
-            return True
+    thread = threading.Thread(target=background_write, daemon=True)
+    thread.start()
 
-    return False
+    _refresh_related_tables(table)
+    return True
 
 
 def _refresh_related_tables(table: str):

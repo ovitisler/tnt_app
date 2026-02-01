@@ -61,22 +61,27 @@ class TestInsertWriteThrough(unittest.TestCase):
 
         _trigger_background_refresh.assert_called_once_with('Completed Sections')
 
-    def test_insert_correct_order(self):
-        """insert should write storage -> cache -> refresh in order"""
-        from models.data import insert_completed_section, _trigger_background_refresh
+    def test_insert_cache_first(self):
+        """insert should update cache first (sync), storage happens async"""
+        from models.data import insert_completed_section
+        import time
 
         call_order = []
 
         self.mock_worksheet.append_row.side_effect = lambda *a, **k: call_order.append('storage')
         self.mock_cache.append_row.side_effect = lambda *a, **k: call_order.append('cache')
-        _trigger_background_refresh.side_effect = lambda *a: call_order.append('refresh')
 
         insert_completed_section({
             'Name': 'Test Kid',
             'Team': 'Red',
         })
 
-        self.assertEqual(call_order, ['storage', 'cache', 'refresh'])
+        # Cache should be first
+        self.assertEqual(call_order[0], 'cache')
+
+        # Storage happens async - wait for background thread
+        time.sleep(0.1)
+        self.assertIn('storage', call_order)
 
     def test_insert_adds_timestamp(self):
         """insert should add timestamp if not present"""
@@ -103,6 +108,7 @@ class TestUpdateWriteThrough(unittest.TestCase):
         mock_cached = MagicMock()
         mock_cached.data = [{'Name': 'Test Kid', 'Team': 'Red', 'Silver Credit': 'FALSE'}]
         self.mock_cache.get.return_value = mock_cached
+        self.mock_cache.update_row.return_value = True
 
         self.patches = [
             patch('models.data._get_worksheet', return_value=self.mock_worksheet),
@@ -160,8 +166,10 @@ class TestUpdateWriteThrough(unittest.TestCase):
         self.assertTrue(result)
 
     def test_update_returns_false_on_no_match(self):
-        """update should return False when no record matches"""
+        """update should return False when no record matches in cache"""
         from models.data import update_completed_section
+
+        self.mock_cache.update_row.return_value = False
 
         result = update_completed_section(
             lambda r: r.get('Name') == 'Nonexistent',
