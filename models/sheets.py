@@ -185,27 +185,6 @@ def get_worksheet(sheet_name):
     return spreadsheet.worksheet(sheet_name)
 
 
-def cache_append_row(sheet_name, row_dict):
-    """Update cache after appending a row (write-through)"""
-    _cache.append_row(sheet_name, row_dict)
-
-
-def cache_update_row(sheet_name, match_fn, updates):
-    """
-    Update cache after modifying a row (write-through).
-    match_fn: function that takes a row dict and returns True if it's the row to update
-    updates: dict of field_name -> new_value
-    """
-    return _cache.update_row(sheet_name, match_fn, updates)
-
-
-def refresh_computed_sheets(sheet_name):
-    """Trigger background refresh for computed sheets (Totals) after writing to RAW sheets"""
-    if sheet_name in INVALIDATION_MAP:
-        for related_sheet in INVALIDATION_MAP[sheet_name]:
-            if related_sheet != sheet_name:
-                _trigger_background_refresh(related_sheet)
-
 def invalidate_cache(sheet_name=None):
     """Manually invalidate cache. If no sheet_name, invalidates all."""
     _cache.invalidate(sheet_name)
