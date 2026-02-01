@@ -1,20 +1,15 @@
 from flask import render_template, request, redirect, url_for
-from datetime import datetime
 from urllib.parse import unquote
 
+from models.data import get_records, insert_record, update_record
 from models.sheets import (
-    get_sheet_data,
-    get_worksheet,
-    cache_append_row,
-    cache_update_row,
-    refresh_computed_sheets,
     ATTENDANCE_SCHEDULE_SHEET,
     WEEKLY_ATTENDANCE_TOTALS_SHEET,
     ATTENDANCE_ENTRIES_SHEET,
     MASTER_ROSTER_SHEET,
 )
 from models.fields import (
-    NAME, TEAM, DATE, TIMESTAMP, GROUP,
+    NAME, TEAM, DATE, GROUP,
     PRESENT, HAS_BIBLE, WEARING_SHIRT, HAS_BOOK, DID_HOMEWORK, HAS_DUES,
 )
 from models.utils import dates_match, find_day_by_date, url_to_date
@@ -26,7 +21,7 @@ def register_attendance_routes(app):
     def attendance():
         # Get attendance schedule data from the sheet
         try:
-            schedule_data = get_sheet_data(ATTENDANCE_SCHEDULE_SHEET)
+            schedule_data = get_records(ATTENDANCE_SCHEDULE_SHEET)
             return render_template('attendance.html', schedule_data=schedule_data)
         except Exception as e:
             # If sheet doesn't exist or error occurs, return empty data
@@ -36,7 +31,7 @@ def register_attendance_routes(app):
     def attendance_details(date_str):
         # Get attendance schedule data and show details for specific day
         try:
-            schedule_data = get_sheet_data(ATTENDANCE_SCHEDULE_SHEET)
+            schedule_data = get_records(ATTENDANCE_SCHEDULE_SHEET)
             
             # Convert URL date back to display format for matching
             display_date = url_to_date(date_str)
@@ -44,7 +39,7 @@ def register_attendance_routes(app):
             
             if day_data:
                 # Get weekly attendance totals for this date
-                all_totals = get_sheet_data(WEEKLY_ATTENDANCE_TOTALS_SHEET)
+                all_totals = get_records(WEEKLY_ATTENDANCE_TOTALS_SHEET)
                 
                 # Filter totals by matching date
                 date_totals = [row for row in all_totals if row.get(DATE) == day_data.get(DATE)]
@@ -62,7 +57,7 @@ def register_attendance_routes(app):
     def team_attendance_details(date_str, team_name):
         # Get team attendance details for specific day and team
         try:
-            schedule_data = get_sheet_data(ATTENDANCE_SCHEDULE_SHEET)
+            schedule_data = get_records(ATTENDANCE_SCHEDULE_SHEET)
             
             # Convert URL date back to display format for matching
             display_date = url_to_date(date_str)
@@ -70,7 +65,7 @@ def register_attendance_routes(app):
             
             if day_data:
                 # Get weekly attendance totals for this date and team
-                all_totals = get_sheet_data(WEEKLY_ATTENDANCE_TOTALS_SHEET)
+                all_totals = get_records(WEEKLY_ATTENDANCE_TOTALS_SHEET)
                 
                 # Find the specific team data
                 team_data = next((row for row in all_totals
@@ -78,7 +73,7 @@ def register_attendance_routes(app):
                                 and row.get(TEAM, '').lower() == team_name.lower()), None)
                 
                 # Get attendance entries for this date and team
-                all_entries = get_sheet_data(ATTENDANCE_ENTRIES_SHEET)
+                all_entries = get_records(ATTENDANCE_ENTRIES_SHEET)
                 
                 # Filter entries by date and team using flexible date matching
                 checked_in_kids = [entry for entry in all_entries
@@ -100,7 +95,7 @@ def register_attendance_routes(app):
     def kid_attendance_details(date_str, team_name, kid_name):
         # Get individual kid attendance details
         try:
-            schedule_data = get_sheet_data(ATTENDANCE_SCHEDULE_SHEET)
+            schedule_data = get_records(ATTENDANCE_SCHEDULE_SHEET)
             
             # Convert URL date back to display format for matching
             display_date = url_to_date(date_str)
@@ -108,7 +103,7 @@ def register_attendance_routes(app):
             
             if day_data:
                 # Get attendance entries for this specific kid, date, and team
-                all_entries = get_sheet_data(ATTENDANCE_ENTRIES_SHEET)
+                all_entries = get_records(ATTENDANCE_ENTRIES_SHEET)
                 
                 # Decode URL-encoded parameters
                 kid_name = unquote(kid_name)
@@ -134,7 +129,7 @@ def register_attendance_routes(app):
     def checkin_form(date_str, team_name):
         try:
             # Get attendance schedule data
-            schedule_data = get_sheet_data(ATTENDANCE_SCHEDULE_SHEET)
+            schedule_data = get_records(ATTENDANCE_SCHEDULE_SHEET)
             
             # Convert URL date back to display format for matching
             display_date = url_to_date(date_str)
@@ -142,7 +137,7 @@ def register_attendance_routes(app):
             
             if day_data:
                 # Get team kids from Master Roster
-                roster_data = get_sheet_data(MASTER_ROSTER_SHEET)
+                roster_data = get_records(MASTER_ROSTER_SHEET)
                 team_kids = [row[NAME] for row in roster_data if row.get(GROUP, '').lower() == team_name.lower()]
                 
                 return render_template('checkin_form.html',
@@ -159,41 +154,20 @@ def register_attendance_routes(app):
     @app.route('/submit_checkin', methods=['POST'])
     def submit_checkin():
         try:
-            # Get form data
-            name = request.form.get('name')
-            date = request.form.get('date')
-            team = request.form.get('team')
             date_str = request.form.get('date_str')
-            
-            # Get attendance entries sheet and headers
-            attendance_entries_sheet = get_worksheet(ATTENDANCE_ENTRIES_SHEET)
-            headers = attendance_entries_sheet.row_values(1)
-            
-            # Create data mapping
-            data_map = {
-                TIMESTAMP: datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                NAME: name,
+            team = request.form.get('team')
+
+            insert_record(ATTENDANCE_ENTRIES_SHEET, {
+                NAME: request.form.get('name'),
                 TEAM: team,
-                DATE: date,
+                DATE: request.form.get('date'),
                 PRESENT: 'present' in request.form,
                 HAS_BIBLE: 'has_bible' in request.form,
                 WEARING_SHIRT: 'wearing_shirt' in request.form,
                 HAS_BOOK: 'has_book' in request.form,
                 DID_HOMEWORK: 'did_homework' in request.form,
                 HAS_DUES: 'has_dues' in request.form,
-            }
-            
-            # Build row in correct order based on headers
-            new_row = []
-            for header in headers:
-                new_row.append(data_map.get(header, ''))
-
-            attendance_entries_sheet.append_row(new_row, value_input_option='USER_ENTERED')
-
-            # Write-through: update cache with new row
-            cache_append_row(ATTENDANCE_ENTRIES_SHEET, data_map)
-            # Trigger background refresh for computed Totals sheet
-            refresh_computed_sheets(ATTENDANCE_ENTRIES_SHEET)
+            })
 
             return redirect(f'/attendance/{date_str}/team/{team}')
         except Exception as e:
@@ -201,68 +175,38 @@ def register_attendance_routes(app):
 
     @app.route('/edit_attendance', methods=['GET', 'POST'])
     def edit_kid_attendance():
-        # Handle GET requests (redirect back)
         if request.method == 'GET':
             return redirect(url_for('attendance'))
-        
-        # Update kid attendance in Google Sheets
+
         try:
             date_str = request.form.get('date_str')
             team_name = request.form.get('team_name')
             kid_name = request.form.get('kid_name')
-            
-            schedule_data = get_sheet_data(ATTENDANCE_SCHEDULE_SHEET)
-            
-            # Convert URL date back to display format for matching
+
+            schedule_data = get_records(ATTENDANCE_SCHEDULE_SHEET)
             display_date = url_to_date(date_str)
             day_data = find_day_by_date(schedule_data, display_date)
-            
+
             if day_data:
-                # Get attendance entries sheet
-                attendance_entries_sheet = get_worksheet(ATTENDANCE_ENTRIES_SHEET)
-                all_entries = attendance_entries_sheet.get_all_records()
-                
-                # Find the row to update
-                for i, entry in enumerate(all_entries):
-                    if (dates_match(entry.get(DATE), day_data.get(DATE))
-                        and entry.get(TEAM, '').lower() == team_name.lower()
-                        and entry.get(NAME, '').lower() == kid_name.lower()):
-                        
-                        # Update the row with form data
-                        row_num = i + 2  # +2 because sheets are 1-indexed and we skip header
-                        
-                        # Get headers to find column positions
-                        headers = attendance_entries_sheet.row_values(1)
-                        
-                        # Update all editable fields based on form state
-                        protected_fields = ['date_str', 'team_name', 'kid_name', NAME, TEAM, DATE, 'Timestamp', TIMESTAMP]
-                        updates = {}
+                entry_date = day_data.get(DATE)
 
-                        for field_name in entry.keys():
-                            if field_name not in protected_fields:
-                                try:
-                                    col_index = headers.index(field_name) + 1
-                                    value = 'TRUE' if field_name in request.form else 'FALSE'
-                                    attendance_entries_sheet.update_cell(row_num, col_index, value)
-                                    updates[field_name] = value
-                                except ValueError:
-                                    continue
-
-                        # Write-through: update cache
-                        entry_date = day_data.get(DATE)
-                        cache_update_row(
-                            ATTENDANCE_ENTRIES_SHEET,
-                            lambda row: (dates_match(row.get(DATE), entry_date)
-                                        and row.get(TEAM, '').lower() == team_name.lower()
-                                        and row.get(NAME, '').lower() == kid_name.lower()),
-                            updates
-                        )
-                        # Trigger background refresh for computed Totals sheet
-                        refresh_computed_sheets(ATTENDANCE_ENTRIES_SHEET)
-                        break
+                update_record(
+                    ATTENDANCE_ENTRIES_SHEET,
+                    lambda row: (dates_match(row.get(DATE), entry_date)
+                                and row.get(TEAM, '').lower() == team_name.lower()
+                                and row.get(NAME, '').lower() == kid_name.lower()),
+                    {
+                        PRESENT: 'TRUE' if PRESENT in request.form else 'FALSE',
+                        HAS_BIBLE: 'TRUE' if HAS_BIBLE in request.form else 'FALSE',
+                        WEARING_SHIRT: 'TRUE' if WEARING_SHIRT in request.form else 'FALSE',
+                        HAS_BOOK: 'TRUE' if HAS_BOOK in request.form else 'FALSE',
+                        DID_HOMEWORK: 'TRUE' if DID_HOMEWORK in request.form else 'FALSE',
+                        HAS_DUES: 'TRUE' if HAS_DUES in request.form else 'FALSE',
+                    }
+                )
 
                 return redirect(f'/attendance/{date_str}/team/{team_name}/kid/{kid_name}')
-            
+
             return redirect(url_for('attendance'))
         except Exception as e:
             return redirect(url_for('attendance'))

@@ -19,7 +19,7 @@ class TestAttendanceRoutes(unittest.TestCase):
         app.config['TESTING'] = True
         self.client = app.test_client()
 
-    @patch('routes.attendance.get_sheet_data')
+    @patch('routes.attendance.get_records')
     def test_attendance_returns_schedule_data(self, mock_get_sheet_data):
         """GET /attendance should return attendance schedule data"""
         mock_get_sheet_data.return_value = [
@@ -31,7 +31,7 @@ class TestAttendanceRoutes(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         mock_get_sheet_data.assert_called_once_with('Attendance Schedule')
 
-    @patch('routes.attendance.get_sheet_data')
+    @patch('routes.attendance.get_records')
     def test_attendance_handles_error(self, mock_get_sheet_data):
         """GET /attendance should handle errors gracefully"""
         mock_get_sheet_data.side_effect = Exception('Sheet not found')
@@ -49,7 +49,7 @@ class TestAttendanceDetailsRoutes(unittest.TestCase):
         app.config['TESTING'] = True
         self.client = app.test_client()
 
-    @patch('routes.attendance.get_sheet_data')
+    @patch('routes.attendance.get_records')
     def test_attendance_details_shows_day_data(self, mock_get_sheet_data):
         """GET /attendance/<date_str> should show day details"""
         mock_get_sheet_data.side_effect = [
@@ -61,7 +61,7 @@ class TestAttendanceDetailsRoutes(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
 
-    @patch('routes.attendance.get_sheet_data')
+    @patch('routes.attendance.get_records')
     def test_attendance_details_redirects_if_date_not_found(self, mock_get_sheet_data):
         """GET /attendance/<date_str> should redirect if date not in schedule"""
         mock_get_sheet_data.return_value = [
@@ -72,7 +72,7 @@ class TestAttendanceDetailsRoutes(unittest.TestCase):
 
         self.assertEqual(response.status_code, 302)
 
-    @patch('routes.attendance.get_sheet_data')
+    @patch('routes.attendance.get_records')
     def test_attendance_details_handles_error(self, mock_get_sheet_data):
         """GET /attendance/<date_str> should redirect on error"""
         mock_get_sheet_data.side_effect = Exception('Error')
@@ -89,7 +89,7 @@ class TestTeamAttendanceDetailsRoutes(unittest.TestCase):
         app.config['TESTING'] = True
         self.client = app.test_client()
 
-    @patch('routes.attendance.get_sheet_data')
+    @patch('routes.attendance.get_records')
     def test_team_attendance_shows_team_data(self, mock_get_sheet_data):
         """GET /attendance/<date>/team/<team> should show team attendance"""
         mock_get_sheet_data.side_effect = [
@@ -102,7 +102,7 @@ class TestTeamAttendanceDetailsRoutes(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
 
-    @patch('routes.attendance.get_sheet_data')
+    @patch('routes.attendance.get_records')
     def test_team_attendance_redirects_if_date_not_found(self, mock_get_sheet_data):
         """Should redirect if date not in schedule"""
         mock_get_sheet_data.return_value = []
@@ -119,7 +119,7 @@ class TestKidAttendanceDetailsRoutes(unittest.TestCase):
         app.config['TESTING'] = True
         self.client = app.test_client()
 
-    @patch('routes.attendance.get_sheet_data')
+    @patch('routes.attendance.get_records')
     def test_kid_attendance_shows_entry(self, mock_get_sheet_data):
         """GET /attendance/<date>/team/<team>/kid/<kid> should show kid entry"""
         mock_get_sheet_data.side_effect = [
@@ -131,7 +131,7 @@ class TestKidAttendanceDetailsRoutes(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
 
-    @patch('routes.attendance.get_sheet_data')
+    @patch('routes.attendance.get_records')
     def test_kid_attendance_handles_url_encoding(self, mock_get_sheet_data):
         """Should handle URL-encoded kid names"""
         mock_get_sheet_data.side_effect = [
@@ -151,7 +151,7 @@ class TestCheckinFormRoutes(unittest.TestCase):
         app.config['TESTING'] = True
         self.client = app.test_client()
 
-    @patch('routes.attendance.get_sheet_data')
+    @patch('routes.attendance.get_records')
     def test_checkin_form_shows_team_kids(self, mock_get_sheet_data):
         """GET /attendance/<date>/team/<team>/checkin should show form with team kids"""
         mock_get_sheet_data.side_effect = [
@@ -163,7 +163,7 @@ class TestCheckinFormRoutes(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
 
-    @patch('routes.attendance.get_sheet_data')
+    @patch('routes.attendance.get_records')
     def test_checkin_form_redirects_if_date_not_found(self, mock_get_sheet_data):
         """Should redirect if date not in schedule"""
         mock_get_sheet_data.return_value = []
@@ -180,15 +180,9 @@ class TestSubmitCheckinRoutes(unittest.TestCase):
         app.config['TESTING'] = True
         self.client = app.test_client()
 
-    @patch('routes.attendance.refresh_computed_sheets')
-    @patch('routes.attendance.cache_append_row')
-    @patch('routes.attendance.get_worksheet')
-    def test_submit_checkin_writes_to_sheet(self, mock_get_worksheet, mock_cache_append, mock_refresh):
-        """POST /submit_checkin should write to Google Sheets"""
-        mock_worksheet = MagicMock()
-        mock_worksheet.row_values.return_value = ['timestamp', 'Name', 'Team', 'Date', 'Present', 'Has Bible']
-        mock_get_worksheet.return_value = mock_worksheet
-
+    @patch('routes.attendance.insert_record')
+    def test_submit_checkin_inserts_record(self, mock_insert):
+        """POST /submit_checkin should insert a record"""
         response = self.client.post('/submit_checkin', data={
             'name': 'Alice',
             'team': 'Red',
@@ -198,56 +192,27 @@ class TestSubmitCheckinRoutes(unittest.TestCase):
         })
 
         self.assertEqual(response.status_code, 302)
-        mock_worksheet.append_row.assert_called_once()
+        mock_insert.assert_called_once()
 
-    @patch('routes.attendance.refresh_computed_sheets')
-    @patch('routes.attendance.cache_append_row')
-    @patch('routes.attendance.get_worksheet')
-    def test_submit_checkin_updates_cache(self, mock_get_worksheet, mock_cache_append, mock_refresh):
-        """POST /submit_checkin should update cache"""
-        mock_worksheet = MagicMock()
-        mock_worksheet.row_values.return_value = ['timestamp', 'Name', 'Team', 'Date', 'Present']
-        mock_get_worksheet.return_value = mock_worksheet
-
+    @patch('routes.attendance.insert_record')
+    def test_submit_checkin_passes_correct_data(self, mock_insert):
+        """POST /submit_checkin should pass correct data to insert_record"""
         self.client.post('/submit_checkin', data={
             'name': 'Alice',
             'team': 'Red',
             'date': 'January 15, 2025',
             'date_str': '2025-01-15',
+            'present': 'on',
         })
 
-        mock_cache_append.assert_called_once()
-        call_args = mock_cache_append.call_args[0]
-        self.assertEqual(call_args[0], 'Attendance Entries RAW')
-        self.assertEqual(call_args[1]['Name'], 'Alice')
+        call_args = mock_insert.call_args
+        self.assertEqual(call_args[0][0], 'Attendance Entries RAW')
+        self.assertEqual(call_args[0][1]['Name'], 'Alice')
+        self.assertEqual(call_args[0][1]['Team'], 'Red')
 
-    @patch('routes.attendance.refresh_computed_sheets')
-    @patch('routes.attendance.cache_append_row')
-    @patch('routes.attendance.get_worksheet')
-    def test_submit_checkin_triggers_refresh(self, mock_get_worksheet, mock_cache_append, mock_refresh):
-        """POST /submit_checkin should trigger computed sheets refresh"""
-        mock_worksheet = MagicMock()
-        mock_worksheet.row_values.return_value = ['timestamp', 'Name', 'Team', 'Date']
-        mock_get_worksheet.return_value = mock_worksheet
-
-        self.client.post('/submit_checkin', data={
-            'name': 'Alice',
-            'team': 'Red',
-            'date': 'January 15, 2025',
-            'date_str': '2025-01-15',
-        })
-
-        mock_refresh.assert_called_once_with('Attendance Entries RAW')
-
-    @patch('routes.attendance.refresh_computed_sheets')
-    @patch('routes.attendance.cache_append_row')
-    @patch('routes.attendance.get_worksheet')
-    def test_submit_checkin_redirects_to_team_page(self, mock_get_worksheet, mock_cache_append, mock_refresh):
+    @patch('routes.attendance.insert_record')
+    def test_submit_checkin_redirects_to_team_page(self, mock_insert):
         """POST /submit_checkin should redirect to team attendance page"""
-        mock_worksheet = MagicMock()
-        mock_worksheet.row_values.return_value = ['timestamp', 'Name', 'Team', 'Date']
-        mock_get_worksheet.return_value = mock_worksheet
-
         response = self.client.post('/submit_checkin', data={
             'name': 'Alice',
             'team': 'Red',
@@ -258,10 +223,10 @@ class TestSubmitCheckinRoutes(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn('/attendance/2025-01-15/team/Red', response.location)
 
-    @patch('routes.attendance.get_worksheet')
-    def test_submit_checkin_handles_error(self, mock_get_worksheet):
+    @patch('routes.attendance.insert_record')
+    def test_submit_checkin_handles_error(self, mock_insert):
         """POST /submit_checkin should redirect on error"""
-        mock_get_worksheet.side_effect = Exception('Error')
+        mock_insert.side_effect = Exception('Error')
 
         response = self.client.post('/submit_checkin', data={
             'name': 'Alice',
@@ -286,20 +251,11 @@ class TestEditAttendanceRoutes(unittest.TestCase):
 
         self.assertEqual(response.status_code, 302)
 
-    @patch('routes.attendance.refresh_computed_sheets')
-    @patch('routes.attendance.cache_update_row')
-    @patch('routes.attendance.get_worksheet')
-    @patch('routes.attendance.get_sheet_data')
-    def test_edit_attendance_updates_sheet(self, mock_get_sheet_data, mock_get_worksheet, mock_cache_update, mock_refresh):
-        """POST /edit_attendance should update the sheet"""
-        mock_get_sheet_data.return_value = [{'Date': 'January 15, 2025', 'Theme': 'Test'}]
-
-        mock_worksheet = MagicMock()
-        mock_worksheet.get_all_records.return_value = [
-            {'Date': 'January 15, 2025', 'Team': 'Red', 'Name': 'Alice', 'Present': False, 'Has Bible': False}
-        ]
-        mock_worksheet.row_values.return_value = ['Date', 'Team', 'Name', 'Present', 'Has Bible']
-        mock_get_worksheet.return_value = mock_worksheet
+    @patch('routes.attendance.update_record')
+    @patch('routes.attendance.get_records')
+    def test_edit_attendance_calls_update_record(self, mock_get_records, mock_update):
+        """POST /edit_attendance should call update_record"""
+        mock_get_records.return_value = [{'Date': 'January 15, 2025', 'Theme': 'Test'}]
 
         response = self.client.post('/edit_attendance', data={
             'date_str': '2025-01-15',
@@ -309,31 +265,27 @@ class TestEditAttendanceRoutes(unittest.TestCase):
         })
 
         self.assertEqual(response.status_code, 302)
-        mock_worksheet.update_cell.assert_called()
+        mock_update.assert_called_once()
 
-    @patch('routes.attendance.refresh_computed_sheets')
-    @patch('routes.attendance.cache_update_row')
-    @patch('routes.attendance.get_worksheet')
-    @patch('routes.attendance.get_sheet_data')
-    def test_edit_attendance_updates_cache(self, mock_get_sheet_data, mock_get_worksheet, mock_cache_update, mock_refresh):
-        """POST /edit_attendance should update cache"""
-        mock_get_sheet_data.return_value = [{'Date': 'January 15, 2025', 'Theme': 'Test'}]
-
-        mock_worksheet = MagicMock()
-        mock_worksheet.get_all_records.return_value = [
-            {'Date': 'January 15, 2025', 'Team': 'Red', 'Name': 'Alice', 'Present': False}
-        ]
-        mock_worksheet.row_values.return_value = ['Date', 'Team', 'Name', 'Present']
-        mock_get_worksheet.return_value = mock_worksheet
+    @patch('routes.attendance.update_record')
+    @patch('routes.attendance.get_records')
+    def test_edit_attendance_passes_correct_updates(self, mock_get_records, mock_update):
+        """POST /edit_attendance should pass correct updates"""
+        mock_get_records.return_value = [{'Date': 'January 15, 2025', 'Theme': 'Test'}]
 
         self.client.post('/edit_attendance', data={
             'date_str': '2025-01-15',
             'team_name': 'Red',
             'kid_name': 'Alice',
+            'Present': 'on',
+            'Has Bible': 'on',
         })
 
-        mock_cache_update.assert_called_once()
-        mock_refresh.assert_called_once_with('Attendance Entries RAW')
+        call_args = mock_update.call_args
+        self.assertEqual(call_args[0][0], 'Attendance Entries RAW')
+        updates = call_args[0][2]
+        self.assertEqual(updates['Present'], 'TRUE')
+        self.assertEqual(updates['Has Bible'], 'TRUE')
 
 
 if __name__ == '__main__':

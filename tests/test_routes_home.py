@@ -19,7 +19,7 @@ class TestHomeRoutes(unittest.TestCase):
         app.config['TESTING'] = True
         self.client = app.test_client()
 
-    @patch('routes.home.get_sheet_data')
+    @patch('routes.home.get_records')
     def test_home_returns_schedule_data(self, mock_get_sheet_data):
         """GET / should return schedule data"""
         mock_get_sheet_data.return_value = [
@@ -31,7 +31,7 @@ class TestHomeRoutes(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         mock_get_sheet_data.assert_called_once_with('Schedule')
 
-    @patch('routes.home.get_sheet_data')
+    @patch('routes.home.get_records')
     def test_home_handles_error(self, mock_get_sheet_data):
         """GET / should handle errors gracefully"""
         mock_get_sheet_data.side_effect = Exception('Sheet not found')
@@ -49,7 +49,7 @@ class TestHomeDetailsRoutes(unittest.TestCase):
         app.config['TESTING'] = True
         self.client = app.test_client()
 
-    @patch('routes.home.get_sheet_data')
+    @patch('routes.home.get_records')
     def test_home_details_shows_day_data(self, mock_get_sheet_data):
         """GET /home/<date_str> should show day details"""
         mock_get_sheet_data.side_effect = [
@@ -61,7 +61,7 @@ class TestHomeDetailsRoutes(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
 
-    @patch('routes.home.get_sheet_data')
+    @patch('routes.home.get_records')
     def test_home_details_redirects_if_date_not_found(self, mock_get_sheet_data):
         """GET /home/<date_str> should redirect if date not in schedule"""
         mock_get_sheet_data.return_value = [
@@ -72,7 +72,7 @@ class TestHomeDetailsRoutes(unittest.TestCase):
 
         self.assertEqual(response.status_code, 302)
 
-    @patch('routes.home.get_sheet_data')
+    @patch('routes.home.get_records')
     def test_home_details_handles_error(self, mock_get_sheet_data):
         """GET /home/<date_str> should redirect on error"""
         mock_get_sheet_data.side_effect = Exception('Error')
@@ -89,7 +89,7 @@ class TestHomeTeamDetailsRoutes(unittest.TestCase):
         app.config['TESTING'] = True
         self.client = app.test_client()
 
-    @patch('routes.home.get_sheet_data')
+    @patch('routes.home.get_records')
     def test_team_details_shows_team_data(self, mock_get_sheet_data):
         """GET /home/<date>/team/<team> should show team details"""
         mock_get_sheet_data.side_effect = [
@@ -102,7 +102,7 @@ class TestHomeTeamDetailsRoutes(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
 
-    @patch('routes.home.get_sheet_data')
+    @patch('routes.home.get_records')
     def test_team_details_groups_sections_by_kid(self, mock_get_sheet_data):
         """Should group sections by kid name"""
         mock_get_sheet_data.side_effect = [
@@ -119,7 +119,7 @@ class TestHomeTeamDetailsRoutes(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
 
-    @patch('routes.home.get_sheet_data')
+    @patch('routes.home.get_records')
     def test_team_details_redirects_if_date_not_found(self, mock_get_sheet_data):
         """Should redirect if date not in schedule"""
         mock_get_sheet_data.return_value = []
@@ -136,7 +136,7 @@ class TestRecordSectionFormRoutes(unittest.TestCase):
         app.config['TESTING'] = True
         self.client = app.test_client()
 
-    @patch('routes.home.get_sheet_data')
+    @patch('routes.home.get_records')
     def test_record_section_form_shows_team_kids(self, mock_get_sheet_data):
         """GET /home/<date>/team/<team>/record_section should show form with team kids"""
         mock_get_sheet_data.side_effect = [
@@ -148,7 +148,7 @@ class TestRecordSectionFormRoutes(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
 
-    @patch('routes.home.get_sheet_data')
+    @patch('routes.home.get_records')
     def test_record_section_form_redirects_if_date_not_found(self, mock_get_sheet_data):
         """Should redirect if date not in schedule"""
         mock_get_sheet_data.return_value = []
@@ -165,15 +165,9 @@ class TestSubmitSectionRoutes(unittest.TestCase):
         app.config['TESTING'] = True
         self.client = app.test_client()
 
-    @patch('routes.home.refresh_computed_sheets')
-    @patch('routes.home.cache_append_row')
-    @patch('routes.home.get_worksheet')
-    def test_submit_section_writes_to_sheet(self, mock_get_worksheet, mock_cache_append, mock_refresh):
-        """POST /submit_section should write to Google Sheets"""
-        mock_worksheet = MagicMock()
-        mock_worksheet.row_values.return_value = ['timestamp', 'Name', 'Team', 'Date', 'Section', 'Section Complete', 'Silver Credit', 'Gold Credit']
-        mock_get_worksheet.return_value = mock_worksheet
-
+    @patch('routes.home.insert_record')
+    def test_submit_section_inserts_record(self, mock_insert):
+        """POST /submit_section should insert a record"""
         response = self.client.post('/submit_section', data={
             'name': 'Alice',
             'team': 'Red',
@@ -183,17 +177,11 @@ class TestSubmitSectionRoutes(unittest.TestCase):
         })
 
         self.assertEqual(response.status_code, 302)
-        mock_worksheet.append_row.assert_called_once()
+        mock_insert.assert_called_once()
 
-    @patch('routes.home.refresh_computed_sheets')
-    @patch('routes.home.cache_append_row')
-    @patch('routes.home.get_worksheet')
-    def test_submit_section_updates_cache(self, mock_get_worksheet, mock_cache_append, mock_refresh):
-        """POST /submit_section should update cache"""
-        mock_worksheet = MagicMock()
-        mock_worksheet.row_values.return_value = ['timestamp', 'Name', 'Team', 'Date', 'Section']
-        mock_get_worksheet.return_value = mock_worksheet
-
+    @patch('routes.home.insert_record')
+    def test_submit_section_passes_correct_data(self, mock_insert):
+        """POST /submit_section should pass correct data to insert_record"""
         self.client.post('/submit_section', data={
             'name': 'Alice',
             'team': 'Red',
@@ -202,39 +190,15 @@ class TestSubmitSectionRoutes(unittest.TestCase):
             'section': '1.1',
         })
 
-        mock_cache_append.assert_called_once()
-        call_args = mock_cache_append.call_args[0]
-        self.assertEqual(call_args[0], 'Completed Sections RAW')
-        self.assertEqual(call_args[1]['Name'], 'Alice')
+        call_args = mock_insert.call_args
+        self.assertEqual(call_args[0][0], 'Completed Sections RAW')
+        self.assertEqual(call_args[0][1]['Name'], 'Alice')
+        self.assertEqual(call_args[0][1]['Team'], 'Red')
+        self.assertEqual(call_args[0][1]['Section'], '1.1')
 
-    @patch('routes.home.refresh_computed_sheets')
-    @patch('routes.home.cache_append_row')
-    @patch('routes.home.get_worksheet')
-    def test_submit_section_triggers_refresh(self, mock_get_worksheet, mock_cache_append, mock_refresh):
-        """POST /submit_section should trigger computed sheets refresh"""
-        mock_worksheet = MagicMock()
-        mock_worksheet.row_values.return_value = ['timestamp', 'Name', 'Team', 'Date', 'Section']
-        mock_get_worksheet.return_value = mock_worksheet
-
-        self.client.post('/submit_section', data={
-            'name': 'Alice',
-            'team': 'Red',
-            'date': 'January 15, 2025',
-            'date_str': '2025-01-15',
-            'section': '1.1',
-        })
-
-        mock_refresh.assert_called_once_with('Completed Sections RAW')
-
-    @patch('routes.home.refresh_computed_sheets')
-    @patch('routes.home.cache_append_row')
-    @patch('routes.home.get_worksheet')
-    def test_submit_section_redirects_to_team_page(self, mock_get_worksheet, mock_cache_append, mock_refresh):
+    @patch('routes.home.insert_record')
+    def test_submit_section_redirects_to_team_page(self, mock_insert):
         """POST /submit_section should redirect to team page"""
-        mock_worksheet = MagicMock()
-        mock_worksheet.row_values.return_value = ['timestamp', 'Name', 'Team', 'Date', 'Section']
-        mock_get_worksheet.return_value = mock_worksheet
-
         response = self.client.post('/submit_section', data={
             'name': 'Alice',
             'team': 'Red',
@@ -246,10 +210,10 @@ class TestSubmitSectionRoutes(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn('/home/2025-01-15/team/Red', response.location)
 
-    @patch('routes.home.get_worksheet')
-    def test_submit_section_handles_error(self, mock_get_worksheet):
+    @patch('routes.home.insert_record')
+    def test_submit_section_handles_error(self, mock_insert):
         """POST /submit_section should redirect on error"""
-        mock_get_worksheet.side_effect = Exception('Error')
+        mock_insert.side_effect = Exception('Error')
 
         response = self.client.post('/submit_section', data={
             'name': 'Alice',
@@ -275,20 +239,11 @@ class TestEditSectionRoutes(unittest.TestCase):
 
         self.assertEqual(response.status_code, 302)
 
-    @patch('routes.home.refresh_computed_sheets')
-    @patch('routes.home.cache_update_row')
-    @patch('routes.home.get_worksheet')
-    @patch('routes.home.get_sheet_data')
-    def test_edit_section_updates_sheet(self, mock_get_sheet_data, mock_get_worksheet, mock_cache_update, mock_refresh):
-        """POST /edit_section should update the sheet"""
-        mock_get_sheet_data.return_value = [{'Date': 'January 15, 2025', 'Theme': 'Test'}]
-
-        mock_worksheet = MagicMock()
-        mock_worksheet.get_all_records.return_value = [
-            {'Date': 'January 15, 2025', 'Team': 'Red', 'Name': 'Alice', 'Section': '1.1', 'Section Complete': False}
-        ]
-        mock_worksheet.row_values.return_value = ['Date', 'Team', 'Name', 'Section', 'Section Complete']
-        mock_get_worksheet.return_value = mock_worksheet
+    @patch('routes.home.update_record')
+    @patch('routes.home.get_records')
+    def test_edit_section_calls_update_record(self, mock_get_records, mock_update):
+        """POST /edit_section should call update_record"""
+        mock_get_records.return_value = [{'Date': 'January 15, 2025', 'Theme': 'Test'}]
 
         response = self.client.post('/edit_section', data={
             'date_str': '2025-01-15',
@@ -299,32 +254,29 @@ class TestEditSectionRoutes(unittest.TestCase):
         })
 
         self.assertEqual(response.status_code, 302)
-        mock_worksheet.update_cell.assert_called()
+        mock_update.assert_called_once()
 
-    @patch('routes.home.refresh_computed_sheets')
-    @patch('routes.home.cache_update_row')
-    @patch('routes.home.get_worksheet')
-    @patch('routes.home.get_sheet_data')
-    def test_edit_section_updates_cache(self, mock_get_sheet_data, mock_get_worksheet, mock_cache_update, mock_refresh):
-        """POST /edit_section should update cache"""
-        mock_get_sheet_data.return_value = [{'Date': 'January 15, 2025', 'Theme': 'Test'}]
-
-        mock_worksheet = MagicMock()
-        mock_worksheet.get_all_records.return_value = [
-            {'Date': 'January 15, 2025', 'Team': 'Red', 'Name': 'Alice', 'Section': '1.1', 'Section Complete': False}
-        ]
-        mock_worksheet.row_values.return_value = ['Date', 'Team', 'Name', 'Section', 'Section Complete']
-        mock_get_worksheet.return_value = mock_worksheet
+    @patch('routes.home.update_record')
+    @patch('routes.home.get_records')
+    def test_edit_section_passes_correct_updates(self, mock_get_records, mock_update):
+        """POST /edit_section should pass correct updates"""
+        mock_get_records.return_value = [{'Date': 'January 15, 2025', 'Theme': 'Test'}]
 
         self.client.post('/edit_section', data={
             'date_str': '2025-01-15',
             'team_name': 'Red',
             'kid_name': 'Alice',
             'section_name': '1.1',
+            'Section Complete': 'on',
+            'Silver Credit': 'on',
         })
 
-        mock_cache_update.assert_called_once()
-        mock_refresh.assert_called_once_with('Completed Sections RAW')
+        call_args = mock_update.call_args
+        self.assertEqual(call_args[0][0], 'Completed Sections RAW')
+        updates = call_args[0][2]
+        self.assertEqual(updates['Section Complete'], 'TRUE')
+        self.assertEqual(updates['Silver Credit'], 'TRUE')
+        self.assertEqual(updates['Gold Credit'], 'FALSE')
 
 
 class TestHomeSectionDetailsRoutes(unittest.TestCase):
@@ -334,7 +286,7 @@ class TestHomeSectionDetailsRoutes(unittest.TestCase):
         app.config['TESTING'] = True
         self.client = app.test_client()
 
-    @patch('routes.home.get_sheet_data')
+    @patch('routes.home.get_records')
     def test_section_details_shows_entry(self, mock_get_sheet_data):
         """GET section details should show section entry"""
         mock_get_sheet_data.side_effect = [
@@ -346,7 +298,7 @@ class TestHomeSectionDetailsRoutes(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
 
-    @patch('routes.home.get_sheet_data')
+    @patch('routes.home.get_records')
     def test_section_details_handles_url_encoding(self, mock_get_sheet_data):
         """Should handle URL-encoded kid names"""
         mock_get_sheet_data.side_effect = [

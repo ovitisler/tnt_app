@@ -19,7 +19,7 @@ class TestProgressRoutes(unittest.TestCase):
         app.config['TESTING'] = True
         self.client = app.test_client()
 
-    @patch('routes.progress.get_sheet_data')
+    @patch('routes.progress.get_records')
     def test_progress_returns_students(self, mock_get_sheet_data):
         """GET /progress should return all students from roster"""
         mock_get_sheet_data.return_value = [
@@ -32,7 +32,7 @@ class TestProgressRoutes(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         mock_get_sheet_data.assert_called_once_with('Master Roster')
 
-    @patch('routes.progress.get_sheet_data')
+    @patch('routes.progress.get_records')
     def test_progress_handles_error(self, mock_get_sheet_data):
         """GET /progress should handle errors gracefully"""
         mock_get_sheet_data.side_effect = Exception('Sheet not found')
@@ -50,7 +50,7 @@ class TestStudentProgressRoutes(unittest.TestCase):
         app.config['TESTING'] = True
         self.client = app.test_client()
 
-    @patch('routes.progress.get_sheet_data')
+    @patch('routes.progress.get_records')
     def test_student_progress_shows_student_data(self, mock_get_sheet_data):
         """GET /progress/student/<name> should show student progress"""
         mock_get_sheet_data.side_effect = [
@@ -65,7 +65,7 @@ class TestStudentProgressRoutes(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
 
-    @patch('routes.progress.get_sheet_data')
+    @patch('routes.progress.get_records')
     def test_student_progress_calculates_stats(self, mock_get_sheet_data):
         """Should calculate silver and gold credit counts"""
         mock_get_sheet_data.side_effect = [
@@ -81,7 +81,7 @@ class TestStudentProgressRoutes(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
 
-    @patch('routes.progress.get_sheet_data')
+    @patch('routes.progress.get_records')
     def test_student_progress_handles_url_encoding(self, mock_get_sheet_data):
         """Should handle URL-encoded student names"""
         mock_get_sheet_data.side_effect = [
@@ -93,7 +93,7 @@ class TestStudentProgressRoutes(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
 
-    @patch('routes.progress.get_sheet_data')
+    @patch('routes.progress.get_records')
     def test_student_progress_filters_by_student(self, mock_get_sheet_data):
         """Should only include sections for the requested student"""
         mock_get_sheet_data.side_effect = [
@@ -108,7 +108,7 @@ class TestStudentProgressRoutes(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
 
-    @patch('routes.progress.get_sheet_data')
+    @patch('routes.progress.get_records')
     def test_student_progress_handles_error(self, mock_get_sheet_data):
         """Should redirect on error"""
         mock_get_sheet_data.side_effect = Exception('Error')
@@ -125,7 +125,7 @@ class TestStudentSectionDetailsRoutes(unittest.TestCase):
         app.config['TESTING'] = True
         self.client = app.test_client()
 
-    @patch('routes.progress.get_sheet_data')
+    @patch('routes.progress.get_records')
     def test_section_details_shows_entry(self, mock_get_sheet_data):
         """GET /progress/student/<name>/section/<index> should show section"""
         mock_get_sheet_data.return_value = [
@@ -137,7 +137,7 @@ class TestStudentSectionDetailsRoutes(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
 
-    @patch('routes.progress.get_sheet_data')
+    @patch('routes.progress.get_records')
     def test_section_details_redirects_invalid_index(self, mock_get_sheet_data):
         """Should redirect if section index is out of range"""
         mock_get_sheet_data.return_value = [
@@ -148,7 +148,7 @@ class TestStudentSectionDetailsRoutes(unittest.TestCase):
 
         self.assertEqual(response.status_code, 302)
 
-    @patch('routes.progress.get_sheet_data')
+    @patch('routes.progress.get_records')
     def test_section_details_handles_error(self, mock_get_sheet_data):
         """Should redirect on error"""
         mock_get_sheet_data.side_effect = Exception('Error')
@@ -171,17 +171,13 @@ class TestEditProgressSectionRoutes(unittest.TestCase):
 
         self.assertEqual(response.status_code, 302)
 
-    @patch('routes.progress.refresh_computed_sheets')
-    @patch('routes.progress.cache_update_row')
-    @patch('routes.progress.get_worksheet')
-    def test_edit_progress_section_updates_sheet(self, mock_get_worksheet, mock_cache_update, mock_refresh):
-        """POST /edit_progress_section should update the sheet"""
-        mock_worksheet = MagicMock()
-        mock_worksheet.get_all_records.return_value = [
+    @patch('routes.progress.update_record')
+    @patch('routes.progress.get_records')
+    def test_edit_progress_section_calls_update_record(self, mock_get_records, mock_update):
+        """POST /edit_progress_section should call update_record"""
+        mock_get_records.return_value = [
             {'Name': 'Alice', 'Date': 'January 15, 2025', 'Section': '1.1', 'Silver Credit': False}
         ]
-        mock_worksheet.row_values.return_value = ['Name', 'Date', 'Section', 'Silver Credit']
-        mock_get_worksheet.return_value = mock_worksheet
 
         response = self.client.post('/edit_progress_section', data={
             'student_name': 'Alice',
@@ -190,39 +186,35 @@ class TestEditProgressSectionRoutes(unittest.TestCase):
         })
 
         self.assertEqual(response.status_code, 302)
-        mock_worksheet.update_cell.assert_called()
+        mock_update.assert_called_once()
 
-    @patch('routes.progress.refresh_computed_sheets')
-    @patch('routes.progress.cache_update_row')
-    @patch('routes.progress.get_worksheet')
-    def test_edit_progress_section_updates_cache(self, mock_get_worksheet, mock_cache_update, mock_refresh):
-        """POST /edit_progress_section should update cache"""
-        mock_worksheet = MagicMock()
-        mock_worksheet.get_all_records.return_value = [
-            {'Name': 'Alice', 'Date': 'January 15, 2025', 'Section': '1.1', 'Silver Credit': False}
+    @patch('routes.progress.update_record')
+    @patch('routes.progress.get_records')
+    def test_edit_progress_section_passes_correct_updates(self, mock_get_records, mock_update):
+        """POST /edit_progress_section should pass correct updates"""
+        mock_get_records.return_value = [
+            {'Name': 'Alice', 'Date': 'January 15, 2025', 'Section': '1.1'}
         ]
-        mock_worksheet.row_values.return_value = ['Name', 'Date', 'Section', 'Silver Credit']
-        mock_get_worksheet.return_value = mock_worksheet
 
         self.client.post('/edit_progress_section', data={
             'student_name': 'Alice',
             'section_index': '0',
+            'Silver Credit': 'on',
         })
 
-        mock_cache_update.assert_called_once()
-        mock_refresh.assert_called_once_with('Completed Sections RAW')
+        call_args = mock_update.call_args
+        self.assertEqual(call_args[0][0], 'Completed Sections RAW')
+        updates = call_args[0][2]
+        self.assertEqual(updates['Silver Credit'], 'TRUE')
+        self.assertEqual(updates['Gold Credit'], 'FALSE')
 
-    @patch('routes.progress.refresh_computed_sheets')
-    @patch('routes.progress.cache_update_row')
-    @patch('routes.progress.get_worksheet')
-    def test_edit_progress_section_redirects_to_section(self, mock_get_worksheet, mock_cache_update, mock_refresh):
+    @patch('routes.progress.update_record')
+    @patch('routes.progress.get_records')
+    def test_edit_progress_section_redirects_to_section(self, mock_get_records, mock_update):
         """POST /edit_progress_section should redirect to section details"""
-        mock_worksheet = MagicMock()
-        mock_worksheet.get_all_records.return_value = [
-            {'Name': 'Alice', 'Date': 'January 15, 2025', 'Section': '1.1', 'Silver Credit': False}
+        mock_get_records.return_value = [
+            {'Name': 'Alice', 'Date': 'January 15, 2025', 'Section': '1.1'}
         ]
-        mock_worksheet.row_values.return_value = ['Name', 'Date', 'Section', 'Silver Credit']
-        mock_get_worksheet.return_value = mock_worksheet
 
         response = self.client.post('/edit_progress_section', data={
             'student_name': 'Alice',
@@ -232,14 +224,12 @@ class TestEditProgressSectionRoutes(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn('/progress/student/Alice/section/0', response.location)
 
-    @patch('routes.progress.get_worksheet')
-    def test_edit_progress_section_handles_invalid_index(self, mock_get_worksheet):
+    @patch('routes.progress.get_records')
+    def test_edit_progress_section_handles_invalid_index(self, mock_get_records):
         """POST /edit_progress_section should redirect on invalid index"""
-        mock_worksheet = MagicMock()
-        mock_worksheet.get_all_records.return_value = [
+        mock_get_records.return_value = [
             {'Name': 'Alice', 'Date': 'January 15, 2025', 'Section': '1.1'}
         ]
-        mock_get_worksheet.return_value = mock_worksheet
 
         response = self.client.post('/edit_progress_section', data={
             'student_name': 'Alice',
@@ -248,10 +238,10 @@ class TestEditProgressSectionRoutes(unittest.TestCase):
 
         self.assertEqual(response.status_code, 302)
 
-    @patch('routes.progress.get_worksheet')
-    def test_edit_progress_section_handles_error(self, mock_get_worksheet):
+    @patch('routes.progress.get_records')
+    def test_edit_progress_section_handles_error(self, mock_get_records):
         """POST /edit_progress_section should redirect on error"""
-        mock_get_worksheet.side_effect = Exception('Error')
+        mock_get_records.side_effect = Exception('Error')
 
         response = self.client.post('/edit_progress_section', data={
             'student_name': 'Alice',

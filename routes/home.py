@@ -1,19 +1,14 @@
 from collections import defaultdict
-from datetime import datetime
 from urllib.parse import unquote
 
 from flask import render_template, request, redirect, url_for
 
 from models.fields import (
-    NAME, TEAM, DATE, TIMESTAMP, GROUP, SECTION,
+    NAME, TEAM, DATE, GROUP, SECTION,
     SECTION_COMPLETE, SILVER_CREDIT, GOLD_CREDIT,
 )
+from models.data import get_records, insert_record, update_record
 from models.sheets import (
-    get_sheet_data,
-    get_worksheet,
-    cache_append_row,
-    cache_update_row,
-    refresh_computed_sheets,
     SCHEDULE_SHEET,
     WEEKLY_TOTALS_SHEET,
     COMPLETED_SECTIONS_SHEET,
@@ -29,7 +24,7 @@ def register_home_routes(app):
     def home():
         # Get schedule data from the sheet
         try:
-            schedule_data = get_sheet_data(SCHEDULE_SHEET)
+            schedule_data = get_records(SCHEDULE_SHEET)
             return render_template('home.html', schedule_data=schedule_data)
         except Exception as e:
             # If sheet doesn't exist or error occurs, return empty data
@@ -39,7 +34,7 @@ def register_home_routes(app):
     def home_details(date_str):
         # Get schedule data and show details for specific day
         try:
-            schedule_data = get_sheet_data(SCHEDULE_SHEET)
+            schedule_data = get_records(SCHEDULE_SHEET)
             
             # Convert URL date back to display format for matching
             display_date = url_to_date(date_str)
@@ -47,7 +42,7 @@ def register_home_routes(app):
             
             if day_data:
                 # Get weekly totals for this date
-                all_totals = get_sheet_data(WEEKLY_TOTALS_SHEET)
+                all_totals = get_records(WEEKLY_TOTALS_SHEET)
                 
                 # Filter totals by matching date
                 date_totals = [row for row in all_totals if row.get(DATE) == day_data.get(DATE)]
@@ -65,7 +60,7 @@ def register_home_routes(app):
     def home_team_details(date_str, team_name):
         # Get team details for specific day and team from home perspective
         try:
-            schedule_data = get_sheet_data(SCHEDULE_SHEET)
+            schedule_data = get_records(SCHEDULE_SHEET)
             
             # Convert URL date back to display format for matching
             display_date = url_to_date(date_str)
@@ -73,7 +68,7 @@ def register_home_routes(app):
             
             if day_data:
                 # Get weekly totals for this date and team
-                all_totals = get_sheet_data(WEEKLY_TOTALS_SHEET)
+                all_totals = get_records(WEEKLY_TOTALS_SHEET)
                 
                 # Find the specific team data
                 team_data = next((row for row in all_totals
@@ -81,7 +76,7 @@ def register_home_routes(app):
                                 and row.get(TEAM, '').lower() == team_name.lower()), None)
                 
                 # Get completed sections for this date and team
-                all_sections = get_sheet_data(COMPLETED_SECTIONS_SHEET)
+                all_sections = get_records(COMPLETED_SECTIONS_SHEET)
 
                 # Filter sections by date and team using flexible date matching
                 team_sections = [entry for entry in all_sections
@@ -110,7 +105,7 @@ def register_home_routes(app):
     def record_section_form(date_str, team_name):
         try:
             # Get schedule data
-            schedule_data = get_sheet_data(SCHEDULE_SHEET)
+            schedule_data = get_records(SCHEDULE_SHEET)
             
             # Convert URL date back to display format for matching
             display_date = url_to_date(date_str)
@@ -118,7 +113,7 @@ def register_home_routes(app):
             
             if day_data:
                 # Get team kids from Master Roster
-                roster_data = get_sheet_data(MASTER_ROSTER_SHEET)
+                roster_data = get_records(MASTER_ROSTER_SHEET)
                 team_kids = [row[NAME] for row in roster_data if row.get(GROUP, '').lower() == team_name.lower()]
                 
                 return render_template('record_section_form.html',
@@ -136,7 +131,7 @@ def register_home_routes(app):
     def home_section_details(date_str, team_name, kid_name, section_name):
         # Get section completion details
         try:
-            schedule_data = get_sheet_data(SCHEDULE_SHEET)
+            schedule_data = get_records(SCHEDULE_SHEET)
             
             # Convert URL date back to display format for matching
             display_date = url_to_date(date_str)
@@ -144,7 +139,7 @@ def register_home_routes(app):
             
             if day_data:
                 # Get completed sections for this specific entry
-                all_sections = get_sheet_data(COMPLETED_SECTIONS_SHEET)
+                all_sections = get_records(COMPLETED_SECTIONS_SHEET)
                 
                 # Decode URL-encoded parameters
                 kid_name = unquote(kid_name)
@@ -173,40 +168,18 @@ def register_home_routes(app):
     @app.route('/submit_section', methods=['POST'])
     def submit_section():
         try:
-            # Get form data
-            name = request.form.get('name')
-            date = request.form.get('date')
-            team = request.form.get('team')
             date_str = request.form.get('date_str')
-            section = request.form.get('section')
-            
-            # Get completed sections sheet and headers
-            completed_sections_sheet = get_worksheet(COMPLETED_SECTIONS_SHEET)
-            headers = completed_sections_sheet.row_values(1)
-            
-            # Create data mapping
-            data_map = {
-                TIMESTAMP: datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                NAME: name,
+            team = request.form.get('team')
+
+            insert_record(COMPLETED_SECTIONS_SHEET, {
+                NAME: request.form.get('name'),
                 TEAM: team,
-                DATE: date,
-                SECTION: section,
+                DATE: request.form.get('date'),
+                SECTION: request.form.get('section'),
                 SECTION_COMPLETE: SECTION_COMPLETE in request.form,
                 SILVER_CREDIT: SILVER_CREDIT in request.form,
                 GOLD_CREDIT: GOLD_CREDIT in request.form,
-            }
-            
-            # Build row in correct order based on headers
-            new_row = []
-            for header in headers:
-                new_row.append(data_map.get(header, ''))
-
-            completed_sections_sheet.append_row(new_row, value_input_option='USER_ENTERED')
-
-            # Write-through: update cache with new row
-            cache_append_row(COMPLETED_SECTIONS_SHEET, data_map)
-            # Trigger background refresh for computed Totals sheet
-            refresh_computed_sheets(COMPLETED_SECTIONS_SHEET)
+            })
 
             return redirect(f'/home/{date_str}/team/{team}')
         except Exception as e:
@@ -214,68 +187,34 @@ def register_home_routes(app):
 
     @app.route('/edit_section', methods=['GET', 'POST'])
     def edit_section():
-        # Handle GET requests (redirect back)
         if request.method == 'GET':
             return redirect(url_for('home'))
-        
-        # Update section completion in Google Sheets
+
         try:
             date_str = request.form.get('date_str')
             team_name = request.form.get('team_name')
             kid_name = request.form.get('kid_name')
             section_name = request.form.get('section_name')
-            
-            schedule_data = get_sheet_data(SCHEDULE_SHEET)
-            
-            # Convert URL date back to display format for matching
+
+            schedule_data = get_records(SCHEDULE_SHEET)
             display_date = url_to_date(date_str)
             day_data = find_day_by_date(schedule_data, display_date)
-            
+
             if day_data:
-                # Get completed sections sheet
-                completed_sections_sheet = get_worksheet(COMPLETED_SECTIONS_SHEET)
-                all_sections = completed_sections_sheet.get_all_records()
-                
-                # Find the row to update
-                for i, entry in enumerate(all_sections):
-                    if (dates_match(entry.get(DATE), day_data.get(DATE))
-                        and entry.get(TEAM, '').lower() == team_name.lower()
-                        and entry.get(NAME, '').lower() == kid_name.lower()
-                        and str(entry.get(SECTION, '')) == str(section_name)):
-                        
-                        # Update the row with form data
-                        row_num = i + 2  # +2 because sheets are 1-indexed and we skip header
-                        
-                        # Get headers to find column positions
-                        headers = completed_sections_sheet.row_values(1)
-                        
-                        # Update all editable fields based on form state
-                        protected_fields = ['date_str', 'team_name', 'kid_name', 'section_name', NAME, TEAM, DATE, SECTION, 'Timestamp', TIMESTAMP]
-                        updates = {}
+                entry_date = day_data.get(DATE)
 
-                        for field_name in entry.keys():
-                            if field_name not in protected_fields:
-                                try:
-                                    col_index = headers.index(field_name) + 1
-                                    value = 'TRUE' if field_name in request.form else 'FALSE'
-                                    completed_sections_sheet.update_cell(row_num, col_index, value)
-                                    updates[field_name] = value
-                                except ValueError:
-                                    continue
-
-                        # Write-through: update cache
-                        entry_date = day_data.get(DATE)
-                        cache_update_row(
-                            COMPLETED_SECTIONS_SHEET,
-                            lambda row: (dates_match(row.get(DATE), entry_date)
-                                        and row.get(TEAM, '').lower() == team_name.lower()
-                                        and row.get(NAME, '').lower() == kid_name.lower()
-                                        and str(row.get(SECTION, '')) == str(section_name)),
-                            updates
-                        )
-                        # Trigger background refresh for computed Totals sheet
-                        refresh_computed_sheets(COMPLETED_SECTIONS_SHEET)
-                        break
+                update_record(
+                    COMPLETED_SECTIONS_SHEET,
+                    lambda row: (dates_match(row.get(DATE), entry_date)
+                                and row.get(TEAM, '').lower() == team_name.lower()
+                                and row.get(NAME, '').lower() == kid_name.lower()
+                                and str(row.get(SECTION, '')) == str(section_name)),
+                    {
+                        SECTION_COMPLETE: 'TRUE' if SECTION_COMPLETE in request.form else 'FALSE',
+                        SILVER_CREDIT: 'TRUE' if SILVER_CREDIT in request.form else 'FALSE',
+                        GOLD_CREDIT: 'TRUE' if GOLD_CREDIT in request.form else 'FALSE',
+                    }
+                )
 
                 return redirect(f'/home/{date_str}/team/{team_name}/kid/{kid_name}/section/{section_name}')
             

@@ -1,15 +1,9 @@
 from flask import render_template, request, redirect, url_for
 from urllib.parse import unquote
 
-from models.sheets import (
-    get_sheet_data,
-    get_worksheet,
-    cache_update_row,
-    refresh_computed_sheets,
-    MASTER_ROSTER_SHEET,
-    COMPLETED_SECTIONS_SHEET,
-)
-from models.fields import NAME, TEAM, DATE, TIMESTAMP, SECTION, SILVER_CREDIT, GOLD_CREDIT
+from models.data import get_records, update_record
+from models.sheets import MASTER_ROSTER_SHEET, COMPLETED_SECTIONS_SHEET
+from models.fields import NAME, DATE, SECTION, SECTION_COMPLETE, SILVER_CREDIT, GOLD_CREDIT
 
 def register_progress_routes(app):
     """Register all progress-related routes"""
@@ -18,7 +12,7 @@ def register_progress_routes(app):
     def progress():
         try:
             # Get all students from Master Roster
-            roster_data = get_sheet_data(MASTER_ROSTER_SHEET)
+            roster_data = get_records(MASTER_ROSTER_SHEET)
             
             return render_template('progress.html', students=roster_data)
         except Exception as e:
@@ -30,11 +24,11 @@ def register_progress_routes(app):
             student_name = unquote(student_name)
             
             # Get student info from Master Roster
-            roster_data = get_sheet_data(MASTER_ROSTER_SHEET)
+            roster_data = get_records(MASTER_ROSTER_SHEET)
             student_info = next((student for student in roster_data if student.get(NAME, '').lower() == student_name.lower()), None)
             
             # Get all completed sections for this student
-            all_sections = get_sheet_data(COMPLETED_SECTIONS_SHEET)
+            all_sections = get_records(COMPLETED_SECTIONS_SHEET)
             
             # Filter sections for this student
             student_sections = [section for section in all_sections if section.get(NAME, '').lower() == student_name.lower()]
@@ -60,7 +54,7 @@ def register_progress_routes(app):
             student_name = unquote(student_name)
 
             # Get all completed sections for this student
-            all_sections = get_sheet_data(COMPLETED_SECTIONS_SHEET)
+            all_sections = get_records(COMPLETED_SECTIONS_SHEET)
 
             # Filter sections for this student
             student_sections = [section for section in all_sections if section.get(NAME, '').lower() == student_name.lower()]
@@ -79,67 +73,36 @@ def register_progress_routes(app):
 
     @app.route('/edit_progress_section', methods=['GET', 'POST'])
     def edit_progress_section():
-        # Handle GET requests (redirect back)
         if request.method == 'GET':
             return redirect(url_for('progress'))
-        
-        # Update section completion in Google Sheets
+
         try:
             student_name = request.form.get('student_name')
             section_index = int(request.form.get('section_index'))
-            
-            # Get all completed sections for this student
-            completed_sections_sheet = get_worksheet(COMPLETED_SECTIONS_SHEET)
-            all_sections = completed_sections_sheet.get_all_records()
-            
-            # Filter sections for this student
-            student_sections = [section for section in all_sections if section.get(NAME, '').lower() == student_name.lower()]
+
+            # Get student's sections to find the target by index
+            all_sections = get_records(COMPLETED_SECTIONS_SHEET)
+            student_sections = [s for s in all_sections if s.get(NAME, '').lower() == student_name.lower()]
 
             if 0 <= section_index < len(student_sections):
-                target_section = student_sections[section_index]
+                target = student_sections[section_index]
+                target_date = target.get(DATE)
+                target_section_val = str(target.get(SECTION, ''))
 
-                # Find the actual row in the sheet
-                for i, entry in enumerate(all_sections):
-                    if (entry.get(NAME, '').lower() == student_name.lower()
-                        and entry.get(DATE) == target_section.get(DATE)
-                        and str(entry.get(SECTION, '')) == str(target_section.get(SECTION, ''))):
-                        
-                        # Update the row with form data
-                        row_num = i + 2  # +2 because sheets are 1-indexed and we skip header
-                        
-                        # Get headers to find column positions
-                        headers = completed_sections_sheet.row_values(1)
-                        
-                        # Update all editable fields based on form state
-                        protected_fields = ['student_name', 'section_index', NAME, TEAM, DATE, SECTION, 'Timestamp', TIMESTAMP]
-                        updates = {}
-
-                        for field_name in entry.keys():
-                            if field_name not in protected_fields:
-                                try:
-                                    col_index = headers.index(field_name) + 1
-                                    value = 'TRUE' if field_name in request.form else 'FALSE'
-                                    completed_sections_sheet.update_cell(row_num, col_index, value)
-                                    updates[field_name] = value
-                                except ValueError:
-                                    continue
-
-                        # Write-through: update cache
-                        target_date = target_section.get(DATE)
-                        target_section_val = str(target_section.get(SECTION, ''))
-                        cache_update_row(
-                            COMPLETED_SECTIONS_SHEET,
-                            lambda row: (row.get(NAME, '').lower() == student_name.lower()
-                                        and row.get(DATE) == target_date
-                                        and str(row.get(SECTION, '')) == target_section_val),
-                            updates
-                        )
-                        # Trigger background refresh for computed Totals sheet
-                        refresh_computed_sheets(COMPLETED_SECTIONS_SHEET)
-                        break
+                update_record(
+                    COMPLETED_SECTIONS_SHEET,
+                    lambda row: (row.get(NAME, '').lower() == student_name.lower()
+                                and row.get(DATE) == target_date
+                                and str(row.get(SECTION, '')) == target_section_val),
+                    {
+                        SECTION_COMPLETE: 'TRUE' if SECTION_COMPLETE in request.form else 'FALSE',
+                        SILVER_CREDIT: 'TRUE' if SILVER_CREDIT in request.form else 'FALSE',
+                        GOLD_CREDIT: 'TRUE' if GOLD_CREDIT in request.form else 'FALSE',
+                    }
+                )
 
                 return redirect(f'/progress/student/{student_name}/section/{section_index}')
-            
+
             return redirect(url_for('progress'))
         except Exception as e:
             return redirect(url_for('progress'))
