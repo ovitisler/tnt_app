@@ -19,10 +19,10 @@ class TestProgressRoutes(unittest.TestCase):
         app.config['TESTING'] = True
         self.client = app.test_client()
 
-    @patch('routes.progress.get_records')
-    def test_progress_returns_students(self, mock_get_sheet_data):
+    @patch('routes.progress.get_roster')
+    def test_progress_returns_students(self, mock_get_roster):
         """GET /progress should return all students from roster"""
-        mock_get_sheet_data.return_value = [
+        mock_get_roster.return_value = [
             {'Name': 'Alice', 'Group': 'Red'},
             {'Name': 'Bob', 'Group': 'Blue'},
         ]
@@ -30,12 +30,12 @@ class TestProgressRoutes(unittest.TestCase):
         response = self.client.get('/progress')
 
         self.assertEqual(response.status_code, 200)
-        mock_get_sheet_data.assert_called_once_with('Master Roster')
+        mock_get_roster.assert_called_once()
 
-    @patch('routes.progress.get_records')
-    def test_progress_handles_error(self, mock_get_sheet_data):
+    @patch('routes.progress.get_roster')
+    def test_progress_handles_error(self, mock_get_roster):
         """GET /progress should handle errors gracefully"""
-        mock_get_sheet_data.side_effect = Exception('Sheet not found')
+        mock_get_roster.side_effect = Exception('Sheet not found')
 
         response = self.client.get('/progress')
 
@@ -50,68 +50,74 @@ class TestStudentProgressRoutes(unittest.TestCase):
         app.config['TESTING'] = True
         self.client = app.test_client()
 
-    @patch('routes.progress.get_records')
-    def test_student_progress_shows_student_data(self, mock_get_sheet_data):
+    @patch('routes.progress.get_completed_sections')
+    @patch('routes.progress.get_roster')
+    def test_student_progress_shows_student_data(self, mock_get_roster, mock_get_sections):
         """GET /progress/student/<name> should show student progress"""
-        mock_get_sheet_data.side_effect = [
-            [{'Name': 'Alice', 'Group': 'Red'}],  # Master Roster
-            [
-                {'Name': 'Alice', 'Section': '1.1', 'Silver Credit': 'TRUE', 'Gold Credit': 'FALSE'},
-                {'Name': 'Alice', 'Section': '1.2', 'Silver Credit': 'TRUE', 'Gold Credit': 'TRUE'},
-            ],  # Completed Sections
+        mock_get_roster.return_value = [
+            {'Name': 'Alice', 'Group': 'Red'}
+        ]
+        mock_get_sections.return_value = [
+            {'Name': 'Alice', 'Section': '1.1', 'Silver Credit': 'TRUE', 'Gold Credit': 'FALSE'},
+            {'Name': 'Alice', 'Section': '1.2', 'Silver Credit': 'TRUE', 'Gold Credit': 'TRUE'},
         ]
 
         response = self.client.get('/progress/student/Alice')
 
         self.assertEqual(response.status_code, 200)
 
-    @patch('routes.progress.get_records')
-    def test_student_progress_calculates_stats(self, mock_get_sheet_data):
+    @patch('routes.progress.get_completed_sections')
+    @patch('routes.progress.get_roster')
+    def test_student_progress_calculates_stats(self, mock_get_roster, mock_get_sections):
         """Should calculate silver and gold credit counts"""
-        mock_get_sheet_data.side_effect = [
-            [{'Name': 'Alice', 'Group': 'Red'}],
-            [
-                {'Name': 'Alice', 'Section': '1.1', 'Silver Credit': 'TRUE', 'Gold Credit': 'FALSE'},
-                {'Name': 'Alice', 'Section': '1.2', 'Silver Credit': 'TRUE', 'Gold Credit': 'TRUE'},
-                {'Name': 'Alice', 'Section': '1.3', 'Silver Credit': 'FALSE', 'Gold Credit': 'FALSE'},
-            ],
+        mock_get_roster.return_value = [
+            {'Name': 'Alice', 'Group': 'Red'}
+        ]
+        mock_get_sections.return_value = [
+            {'Name': 'Alice', 'Section': '1.1', 'Silver Credit': 'TRUE', 'Gold Credit': 'FALSE'},
+            {'Name': 'Alice', 'Section': '1.2', 'Silver Credit': 'TRUE', 'Gold Credit': 'TRUE'},
+            {'Name': 'Alice', 'Section': '1.3', 'Silver Credit': 'FALSE', 'Gold Credit': 'FALSE'},
         ]
 
         response = self.client.get('/progress/student/Alice')
 
         self.assertEqual(response.status_code, 200)
 
-    @patch('routes.progress.get_records')
-    def test_student_progress_handles_url_encoding(self, mock_get_sheet_data):
+    @patch('routes.progress.get_completed_sections')
+    @patch('routes.progress.get_roster')
+    def test_student_progress_handles_url_encoding(self, mock_get_roster, mock_get_sections):
         """Should handle URL-encoded student names"""
-        mock_get_sheet_data.side_effect = [
-            [{'Name': "Alice O'Brien", 'Group': 'Red'}],
-            [{'Name': "Alice O'Brien", 'Section': '1.1', 'Silver Credit': 'TRUE', 'Gold Credit': 'FALSE'}],
+        mock_get_roster.return_value = [
+            {'Name': "Alice O'Brien", 'Group': 'Red'}
+        ]
+        mock_get_sections.return_value = [
+            {'Name': "Alice O'Brien", 'Section': '1.1', 'Silver Credit': 'TRUE', 'Gold Credit': 'FALSE'}
         ]
 
         response = self.client.get("/progress/student/Alice%20O'Brien")
 
         self.assertEqual(response.status_code, 200)
 
-    @patch('routes.progress.get_records')
-    def test_student_progress_filters_by_student(self, mock_get_sheet_data):
+    @patch('routes.progress.get_completed_sections')
+    @patch('routes.progress.get_roster')
+    def test_student_progress_filters_by_student(self, mock_get_roster, mock_get_sections):
         """Should only include sections for the requested student"""
-        mock_get_sheet_data.side_effect = [
-            [{'Name': 'Alice', 'Group': 'Red'}],
-            [
-                {'Name': 'Alice', 'Section': '1.1', 'Silver Credit': 'TRUE', 'Gold Credit': 'FALSE'},
-                {'Name': 'Bob', 'Section': '1.1', 'Silver Credit': 'TRUE', 'Gold Credit': 'TRUE'},
-            ],
+        mock_get_roster.return_value = [
+            {'Name': 'Alice', 'Group': 'Red'}
+        ]
+        mock_get_sections.return_value = [
+            {'Name': 'Alice', 'Section': '1.1', 'Silver Credit': 'TRUE', 'Gold Credit': 'FALSE'},
+            {'Name': 'Bob', 'Section': '1.1', 'Silver Credit': 'TRUE', 'Gold Credit': 'TRUE'},
         ]
 
         response = self.client.get('/progress/student/Alice')
 
         self.assertEqual(response.status_code, 200)
 
-    @patch('routes.progress.get_records')
-    def test_student_progress_handles_error(self, mock_get_sheet_data):
+    @patch('routes.progress.get_roster')
+    def test_student_progress_handles_error(self, mock_get_roster):
         """Should redirect on error"""
-        mock_get_sheet_data.side_effect = Exception('Error')
+        mock_get_roster.side_effect = Exception('Error')
 
         response = self.client.get('/progress/student/Alice')
 
@@ -125,10 +131,10 @@ class TestStudentSectionDetailsRoutes(unittest.TestCase):
         app.config['TESTING'] = True
         self.client = app.test_client()
 
-    @patch('routes.progress.get_records')
-    def test_section_details_shows_entry(self, mock_get_sheet_data):
+    @patch('routes.progress.get_completed_sections')
+    def test_section_details_shows_entry(self, mock_get_sections):
         """GET /progress/student/<name>/section/<index> should show section"""
-        mock_get_sheet_data.return_value = [
+        mock_get_sections.return_value = [
             {'Name': 'Alice', 'Section': '1.1', 'Silver Credit': 'TRUE'},
             {'Name': 'Alice', 'Section': '1.2', 'Silver Credit': 'TRUE'},
         ]
@@ -137,10 +143,10 @@ class TestStudentSectionDetailsRoutes(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
 
-    @patch('routes.progress.get_records')
-    def test_section_details_redirects_invalid_index(self, mock_get_sheet_data):
+    @patch('routes.progress.get_completed_sections')
+    def test_section_details_redirects_invalid_index(self, mock_get_sections):
         """Should redirect if section index is out of range"""
-        mock_get_sheet_data.return_value = [
+        mock_get_sections.return_value = [
             {'Name': 'Alice', 'Section': '1.1', 'Silver Credit': 'TRUE'},
         ]
 
@@ -148,10 +154,10 @@ class TestStudentSectionDetailsRoutes(unittest.TestCase):
 
         self.assertEqual(response.status_code, 302)
 
-    @patch('routes.progress.get_records')
-    def test_section_details_handles_error(self, mock_get_sheet_data):
+    @patch('routes.progress.get_completed_sections')
+    def test_section_details_handles_error(self, mock_get_sections):
         """Should redirect on error"""
-        mock_get_sheet_data.side_effect = Exception('Error')
+        mock_get_sections.side_effect = Exception('Error')
 
         response = self.client.get('/progress/student/Alice/section/0')
 
@@ -171,11 +177,11 @@ class TestEditProgressSectionRoutes(unittest.TestCase):
 
         self.assertEqual(response.status_code, 302)
 
-    @patch('routes.progress.update_record')
-    @patch('routes.progress.get_records')
-    def test_edit_progress_section_calls_update_record(self, mock_get_records, mock_update):
-        """POST /edit_progress_section should call update_record"""
-        mock_get_records.return_value = [
+    @patch('routes.progress.update_completed_section')
+    @patch('routes.progress.get_completed_sections')
+    def test_edit_progress_section_calls_update_record(self, mock_get_sections, mock_update):
+        """POST /edit_progress_section should call update"""
+        mock_get_sections.return_value = [
             {'Name': 'Alice', 'Date': 'January 15, 2025', 'Section': '1.1', 'Silver Credit': False}
         ]
 
@@ -188,11 +194,11 @@ class TestEditProgressSectionRoutes(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
         mock_update.assert_called_once()
 
-    @patch('routes.progress.update_record')
-    @patch('routes.progress.get_records')
-    def test_edit_progress_section_passes_correct_updates(self, mock_get_records, mock_update):
+    @patch('routes.progress.update_completed_section')
+    @patch('routes.progress.get_completed_sections')
+    def test_edit_progress_section_passes_correct_updates(self, mock_get_sections, mock_update):
         """POST /edit_progress_section should pass correct updates"""
-        mock_get_records.return_value = [
+        mock_get_sections.return_value = [
             {'Name': 'Alice', 'Date': 'January 15, 2025', 'Section': '1.1'}
         ]
 
@@ -203,16 +209,15 @@ class TestEditProgressSectionRoutes(unittest.TestCase):
         })
 
         call_args = mock_update.call_args
-        self.assertEqual(call_args[0][0], 'Completed Sections RAW')
-        updates = call_args[0][2]
+        updates = call_args[0][1]
         self.assertEqual(updates['Silver Credit'], 'TRUE')
         self.assertEqual(updates['Gold Credit'], 'FALSE')
 
-    @patch('routes.progress.update_record')
-    @patch('routes.progress.get_records')
-    def test_edit_progress_section_redirects_to_section(self, mock_get_records, mock_update):
+    @patch('routes.progress.update_completed_section')
+    @patch('routes.progress.get_completed_sections')
+    def test_edit_progress_section_redirects_to_section(self, mock_get_sections, mock_update):
         """POST /edit_progress_section should redirect to section details"""
-        mock_get_records.return_value = [
+        mock_get_sections.return_value = [
             {'Name': 'Alice', 'Date': 'January 15, 2025', 'Section': '1.1'}
         ]
 
@@ -224,10 +229,10 @@ class TestEditProgressSectionRoutes(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn('/progress/student/Alice/section/0', response.location)
 
-    @patch('routes.progress.get_records')
-    def test_edit_progress_section_handles_invalid_index(self, mock_get_records):
+    @patch('routes.progress.get_completed_sections')
+    def test_edit_progress_section_handles_invalid_index(self, mock_get_sections):
         """POST /edit_progress_section should redirect on invalid index"""
-        mock_get_records.return_value = [
+        mock_get_sections.return_value = [
             {'Name': 'Alice', 'Date': 'January 15, 2025', 'Section': '1.1'}
         ]
 
@@ -238,10 +243,10 @@ class TestEditProgressSectionRoutes(unittest.TestCase):
 
         self.assertEqual(response.status_code, 302)
 
-    @patch('routes.progress.get_records')
-    def test_edit_progress_section_handles_error(self, mock_get_records):
+    @patch('routes.progress.get_completed_sections')
+    def test_edit_progress_section_handles_error(self, mock_get_sections):
         """POST /edit_progress_section should redirect on error"""
-        mock_get_records.side_effect = Exception('Error')
+        mock_get_sections.side_effect = Exception('Error')
 
         response = self.client.post('/edit_progress_section', data={
             'student_name': 'Alice',

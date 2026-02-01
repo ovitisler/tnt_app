@@ -1,12 +1,13 @@
 from flask import render_template, request, redirect, url_for
 from urllib.parse import unquote
 
-from models.data import get_records, insert_record, update_record
-from models.sheets import (
-    ATTENDANCE_SCHEDULE_SHEET,
-    WEEKLY_ATTENDANCE_TOTALS_SHEET,
-    ATTENDANCE_ENTRIES_SHEET,
-    MASTER_ROSTER_SHEET,
+from models.data import (
+    get_attendance_schedule,
+    get_attendance_totals,
+    get_attendance_entries,
+    get_roster,
+    insert_attendance_entry,
+    update_attendance_entry,
 )
 from models.fields import (
     NAME, TEAM, DATE, GROUP,
@@ -14,38 +15,32 @@ from models.fields import (
 )
 from models.utils import dates_match, find_day_by_date, url_to_date
 
+
 def register_attendance_routes(app):
     """Register all attendance-related routes"""
-    
+
     @app.route('/attendance')
     def attendance():
-        # Get attendance schedule data from the sheet
         try:
-            schedule_data = get_records(ATTENDANCE_SCHEDULE_SHEET)
+            schedule_data = get_attendance_schedule()
             return render_template('attendance.html', schedule_data=schedule_data)
         except Exception as e:
-            # If sheet doesn't exist or error occurs, return empty data
             return render_template('attendance.html', schedule_data=[], error=str(e))
 
     @app.route('/attendance/<date_str>')
     def attendance_details(date_str):
-        # Get attendance schedule data and show details for specific day
         try:
-            schedule_data = get_records(ATTENDANCE_SCHEDULE_SHEET)
-            
-            # Convert URL date back to display format for matching
+            schedule_data = get_attendance_schedule()
+
             display_date = url_to_date(date_str)
             day_data = find_day_by_date(schedule_data, display_date)
-            
+
             if day_data:
-                # Get weekly attendance totals for this date
-                all_totals = get_records(WEEKLY_ATTENDANCE_TOTALS_SHEET)
-                
-                # Filter totals by matching date
+                all_totals = get_attendance_totals()
                 date_totals = [row for row in all_totals if row.get(DATE) == day_data.get(DATE)]
-                
-                return render_template('attendance_details.html', 
-                                     day_data=day_data, 
+
+                return render_template('attendance_details.html',
+                                     day_data=day_data,
                                      date_str=date_str,
                                      weekly_totals=date_totals)
             else:
@@ -55,33 +50,27 @@ def register_attendance_routes(app):
 
     @app.route('/attendance/<date_str>/team/<team_name>')
     def team_attendance_details(date_str, team_name):
-        # Get team attendance details for specific day and team
         try:
-            schedule_data = get_records(ATTENDANCE_SCHEDULE_SHEET)
-            
-            # Convert URL date back to display format for matching
+            schedule_data = get_attendance_schedule()
+
             display_date = url_to_date(date_str)
             day_data = find_day_by_date(schedule_data, display_date)
-            
+
             if day_data:
-                # Get weekly attendance totals for this date and team
-                all_totals = get_records(WEEKLY_ATTENDANCE_TOTALS_SHEET)
-                
-                # Find the specific team data
+                all_totals = get_attendance_totals()
+
                 team_data = next((row for row in all_totals
                                 if row.get(DATE) == day_data.get(DATE)
                                 and row.get(TEAM, '').lower() == team_name.lower()), None)
-                
-                # Get attendance entries for this date and team
-                all_entries = get_records(ATTENDANCE_ENTRIES_SHEET)
-                
-                # Filter entries by date and team using flexible date matching
+
+                all_entries = get_attendance_entries()
+
                 checked_in_kids = [entry for entry in all_entries
                                  if dates_match(entry.get(DATE), day_data.get(DATE))
                                  and entry.get(TEAM, '').lower() == team_name.lower()]
-                
-                return render_template('team_attendance_details.html', 
-                                     day_data=day_data, 
+
+                return render_template('team_attendance_details.html',
+                                     day_data=day_data,
                                      date_str=date_str,
                                      team_data=team_data,
                                      team_name=team_name,
@@ -93,29 +82,24 @@ def register_attendance_routes(app):
 
     @app.route('/attendance/<date_str>/team/<team_name>/kid/<path:kid_name>')
     def kid_attendance_details(date_str, team_name, kid_name):
-        # Get individual kid attendance details
         try:
-            schedule_data = get_records(ATTENDANCE_SCHEDULE_SHEET)
-            
-            # Convert URL date back to display format for matching
+            schedule_data = get_attendance_schedule()
+
             display_date = url_to_date(date_str)
             day_data = find_day_by_date(schedule_data, display_date)
-            
+
             if day_data:
-                # Get attendance entries for this specific kid, date, and team
-                all_entries = get_records(ATTENDANCE_ENTRIES_SHEET)
-                
-                # Decode URL-encoded parameters
+                all_entries = get_attendance_entries()
+
                 kid_name = unquote(kid_name)
-                
-                # Find the specific kid's entry
+
                 kid_entry = next((entry for entry in all_entries
                                 if dates_match(entry.get(DATE), day_data.get(DATE))
                                 and entry.get(TEAM, '').lower() == team_name.lower()
                                 and entry.get(NAME, '').lower() == kid_name.lower()), None)
-                
-                return render_template('kid_attendance_details.html', 
-                                     day_data=day_data, 
+
+                return render_template('kid_attendance_details.html',
+                                     day_data=day_data,
                                      date_str=date_str,
                                      team_name=team_name,
                                      kid_name=kid_name,
@@ -128,18 +112,15 @@ def register_attendance_routes(app):
     @app.route('/attendance/<date_str>/team/<team_name>/checkin')
     def checkin_form(date_str, team_name):
         try:
-            # Get attendance schedule data
-            schedule_data = get_records(ATTENDANCE_SCHEDULE_SHEET)
-            
-            # Convert URL date back to display format for matching
+            schedule_data = get_attendance_schedule()
+
             display_date = url_to_date(date_str)
             day_data = find_day_by_date(schedule_data, display_date)
-            
+
             if day_data:
-                # Get team kids from Master Roster
-                roster_data = get_records(MASTER_ROSTER_SHEET)
+                roster_data = get_roster()
                 team_kids = [row[NAME] for row in roster_data if row.get(GROUP, '').lower() == team_name.lower()]
-                
+
                 return render_template('checkin_form.html',
                                      day_data=day_data,
                                      date_str=date_str,
@@ -157,7 +138,7 @@ def register_attendance_routes(app):
             date_str = request.form.get('date_str')
             team = request.form.get('team')
 
-            insert_record(ATTENDANCE_ENTRIES_SHEET, {
+            insert_attendance_entry({
                 NAME: request.form.get('name'),
                 TEAM: team,
                 DATE: request.form.get('date'),
@@ -183,15 +164,14 @@ def register_attendance_routes(app):
             team_name = request.form.get('team_name')
             kid_name = request.form.get('kid_name')
 
-            schedule_data = get_records(ATTENDANCE_SCHEDULE_SHEET)
+            schedule_data = get_attendance_schedule()
             display_date = url_to_date(date_str)
             day_data = find_day_by_date(schedule_data, display_date)
 
             if day_data:
                 entry_date = day_data.get(DATE)
 
-                update_record(
-                    ATTENDANCE_ENTRIES_SHEET,
+                update_attendance_entry(
                     lambda row: (dates_match(row.get(DATE), entry_date)
                                 and row.get(TEAM, '').lower() == team_name.lower()
                                 and row.get(NAME, '').lower() == kid_name.lower()),

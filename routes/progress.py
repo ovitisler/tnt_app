@@ -1,19 +1,21 @@
 from flask import render_template, request, redirect, url_for
 from urllib.parse import unquote
 
-from models.data import get_records, update_record
-from models.sheets import MASTER_ROSTER_SHEET, COMPLETED_SECTIONS_SHEET
+from models.data import (
+    get_roster,
+    get_completed_sections,
+    update_completed_section,
+)
 from models.fields import NAME, DATE, SECTION, SECTION_COMPLETE, SILVER_CREDIT, GOLD_CREDIT
+
 
 def register_progress_routes(app):
     """Register all progress-related routes"""
-    
+
     @app.route('/progress')
     def progress():
         try:
-            # Get all students from Master Roster
-            roster_data = get_records(MASTER_ROSTER_SHEET)
-            
+            roster_data = get_roster()
             return render_template('progress.html', students=roster_data)
         except Exception as e:
             return render_template('progress.html', students=[], error=str(e))
@@ -22,22 +24,18 @@ def register_progress_routes(app):
     def student_progress(student_name):
         try:
             student_name = unquote(student_name)
-            
-            # Get student info from Master Roster
-            roster_data = get_records(MASTER_ROSTER_SHEET)
+
+            roster_data = get_roster()
             student_info = next((student for student in roster_data if student.get(NAME, '').lower() == student_name.lower()), None)
-            
-            # Get all completed sections for this student
-            all_sections = get_records(COMPLETED_SECTIONS_SHEET)
-            
-            # Filter sections for this student
+
+            all_sections = get_completed_sections()
+
             student_sections = [section for section in all_sections if section.get(NAME, '').lower() == student_name.lower()]
 
-            # Calculate stats
             total_sections = len(student_sections)
             silver_earned = sum(1 for section in student_sections if str(section.get(SILVER_CREDIT, '')).lower() in ['true', 'yes', '1'])
             gold_earned = sum(1 for section in student_sections if str(section.get(GOLD_CREDIT, '')).lower() in ['true', 'yes', '1'])
-            
+
             return render_template('student_progress.html',
                                  student_name=student_name,
                                  student_info=student_info,
@@ -53,10 +51,8 @@ def register_progress_routes(app):
         try:
             student_name = unquote(student_name)
 
-            # Get all completed sections for this student
-            all_sections = get_records(COMPLETED_SECTIONS_SHEET)
+            all_sections = get_completed_sections()
 
-            # Filter sections for this student
             student_sections = [section for section in all_sections if section.get(NAME, '').lower() == student_name.lower()]
 
             if 0 <= section_index < len(student_sections):
@@ -80,8 +76,7 @@ def register_progress_routes(app):
             student_name = request.form.get('student_name')
             section_index = int(request.form.get('section_index'))
 
-            # Get student's sections to find the target by index
-            all_sections = get_records(COMPLETED_SECTIONS_SHEET)
+            all_sections = get_completed_sections()
             student_sections = [s for s in all_sections if s.get(NAME, '').lower() == student_name.lower()]
 
             if 0 <= section_index < len(student_sections):
@@ -89,8 +84,7 @@ def register_progress_routes(app):
                 target_date = target.get(DATE)
                 target_section_val = str(target.get(SECTION, ''))
 
-                update_record(
-                    COMPLETED_SECTIONS_SHEET,
+                update_completed_section(
                     lambda row: (row.get(NAME, '').lower() == student_name.lower()
                                 and row.get(DATE) == target_date
                                 and str(row.get(SECTION, '')) == target_section_val),

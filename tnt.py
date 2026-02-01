@@ -1,6 +1,6 @@
 from flask import Flask, render_template, jsonify
 
-from models.sheets import get_metrics, RateLimitError
+from models.data import get_metrics, RateLimitError
 from models.utils import date_to_url
 from routes.home import register_home_routes
 from routes.attendance import register_attendance_routes
