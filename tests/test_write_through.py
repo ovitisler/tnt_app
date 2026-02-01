@@ -100,6 +100,9 @@ class TestUpdateWriteThrough(unittest.TestCase):
         ]
 
         self.mock_cache = MagicMock()
+        mock_cached = MagicMock()
+        mock_cached.data = [{'Name': 'Test Kid', 'Team': 'Red', 'Silver Credit': 'FALSE'}]
+        self.mock_cache.get.return_value = mock_cached
 
         self.patches = [
             patch('models.data._get_worksheet', return_value=self.mock_worksheet),

@@ -21,6 +21,7 @@ from models.sheets import (
     RateLimitError,
     get_metrics,
 )
+from models.metrics import log_api_call
 
 
 # =============================================================================
@@ -95,11 +96,18 @@ def _insert_record(table: str, data: dict) -> dict:
     if TIMESTAMP not in data:
         data[TIMESTAMP] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-    worksheet = _get_worksheet(table)
-    headers = worksheet.row_values(1)
+    # Get headers from cache if available (saves 1 API call)
+    cached = _cache.get(table)
+    if cached and cached.data:
+        headers = list(cached.data[0].keys())
+    else:
+        worksheet = _get_worksheet(table)
+        headers = worksheet.row_values(1)
 
+    worksheet = _get_worksheet(table)
     row = [data.get(header, '') for header in headers]
     worksheet.append_row(row, value_input_option='USER_ENTERED')
+    log_api_call('write', table, source='google')
 
     _cache.append_row(table, data)
     _refresh_related_tables(table)
@@ -111,7 +119,13 @@ def _update_record(table: str, match_fn, updates: dict) -> bool:
     """Update a record that matches the given predicate."""
     worksheet = _get_worksheet(table)
     all_records = worksheet.get_all_records()
-    headers = worksheet.row_values(1)
+
+    # Get headers from cache if available (saves 1 API call)
+    cached = _cache.get(table)
+    if cached and cached.data:
+        headers = list(cached.data[0].keys())
+    else:
+        headers = worksheet.row_values(1)
 
     for i, record in enumerate(all_records):
         if match_fn(record):
@@ -123,6 +137,7 @@ def _update_record(table: str, match_fn, updates: dict) -> bool:
                     worksheet.update_cell(row_num, col_index, value)
                 except ValueError:
                     continue
+            log_api_call('write', table, source='google')
 
             _cache.update_row(table, match_fn, updates)
             _refresh_related_tables(table)

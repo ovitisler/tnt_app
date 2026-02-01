@@ -180,7 +180,6 @@ def get_sheet_data(sheet_name):
 
 def get_worksheet(sheet_name):
     """Get a worksheet for direct operations (writes, updates)"""
-    log_api_call('write', sheet_name, source='google')
     spreadsheet = _get_spreadsheet_instance()
     return spreadsheet.worksheet(sheet_name)
 
