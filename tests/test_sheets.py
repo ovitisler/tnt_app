@@ -1,12 +1,57 @@
+import sys
 import time
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
-# We need to mock the Google Sheets dependencies before importing
+# Mock gspread and oauth2client before importing sheets module
+sys.modules['gspread'] = MagicMock()
+sys.modules['gspread.exceptions'] = MagicMock()
+sys.modules['oauth2client'] = MagicMock()
+sys.modules['oauth2client.service_account'] = MagicMock()
+
 with patch.dict('os.environ', {'GOOGLE_SHEETS_CREDS': '{}'}):
-    with patch('models.sheets.get_google_creds'):
-        with patch('models.sheets.gspread'):
-            from models import sheets
+    from models import sheets
+    from models.cache import CacheEntry
+
+
+class TestCacheEntry(unittest.TestCase):
+    """Tests for CacheEntry dataclass"""
+
+    def test_age_calculation(self):
+        """Should calculate age correctly"""
+        entry = CacheEntry(data=[], timestamp=time.time() - 100, size_bytes=0)
+        self.assertAlmostEqual(entry.age(), 100, delta=1)
+
+    def test_is_stale(self):
+        """Should return True when age exceeds TTL"""
+        entry = CacheEntry(data=[], timestamp=time.time() - 100, size_bytes=0)
+        self.assertTrue(entry.is_stale(ttl=50))
+        self.assertFalse(entry.is_stale(ttl=200))
+
+    def test_is_fresh(self):
+        """Should return True when age is within TTL"""
+        entry = CacheEntry(data=[], timestamp=time.time() - 10, size_bytes=0)
+        self.assertTrue(entry.is_fresh(ttl=50))
+        self.assertFalse(entry.is_fresh(ttl=5))
+
+    def test_mark_fresh(self):
+        """Should update timestamp to current time"""
+        entry = CacheEntry(data=[], timestamp=time.time() - 100, size_bytes=0)
+        old_timestamp = entry.timestamp
+        entry.mark_fresh()
+        self.assertGreater(entry.timestamp, old_timestamp)
+
+    def test_add_row(self):
+        """Should append row and update size"""
+        entry = CacheEntry(data=[{'Name': 'Existing'}], timestamp=time.time() - 100, size_bytes=100)
+        old_timestamp = entry.timestamp
+        
+        entry.add_row({'Name': 'New'})
+        
+        self.assertEqual(len(entry.data), 2)
+        self.assertEqual(entry.data[-1], {'Name': 'New'})
+        self.assertGreater(entry.size_bytes, 100)
+        self.assertGreater(entry.timestamp, old_timestamp)
 
 
 class TestGetTtlForSheet(unittest.TestCase):
@@ -50,46 +95,37 @@ class TestCacheAppendRow(unittest.TestCase):
 
     def test_appends_to_existing_cache(self):
         """Should append row to existing cache"""
-        sheets._cache['Test Sheet'] = {
-            'data': [{'Name': 'Existing'}],
-            'time': time.time() - 100,
-            'size_bytes': 100
-        }
+        sheets._cache.set('Test Sheet', [{'Name': 'Existing'}], 100)
 
         sheets.cache_append_row('Test Sheet', {'Name': 'New Row'})
 
-        self.assertEqual(len(sheets._cache['Test Sheet']['data']), 2)
-        self.assertEqual(sheets._cache['Test Sheet']['data'][-1], {'Name': 'New Row'})
+        cached = sheets._cache.get('Test Sheet')
+        self.assertEqual(len(cached.data), 2)
+        self.assertEqual(cached.data[-1], {'Name': 'New Row'})
 
     def test_updates_timestamp(self):
         """Should update cache timestamp to mark as fresh"""
-        old_time = time.time() - 100
-        sheets._cache['Test Sheet'] = {
-            'data': [],
-            'time': old_time,
-            'size_bytes': 0
-        }
+        sheets._cache.set('Test Sheet', [], 0)
+        cached = sheets._cache.get('Test Sheet')
+        cached.timestamp = time.time() - 100
+        old_time = cached.timestamp
 
         sheets.cache_append_row('Test Sheet', {'Name': 'New'})
 
-        self.assertGreater(sheets._cache['Test Sheet']['time'], old_time)
+        self.assertGreater(sheets._cache.get('Test Sheet').timestamp, old_time)
 
     def test_updates_size_bytes(self):
         """Should update size_bytes estimate"""
-        sheets._cache['Test Sheet'] = {
-            'data': [],
-            'time': time.time(),
-            'size_bytes': 100
-        }
+        sheets._cache.set('Test Sheet', [], 100)
 
         sheets.cache_append_row('Test Sheet', {'Name': 'New'})
 
-        self.assertGreater(sheets._cache['Test Sheet']['size_bytes'], 100)
+        self.assertGreater(sheets._cache.get('Test Sheet').size_bytes, 100)
 
     def test_no_cache_does_nothing(self):
         """Should do nothing if cache doesn't exist"""
         sheets.cache_append_row('Nonexistent Sheet', {'Name': 'New'})
-        self.assertNotIn('Nonexistent Sheet', sheets._cache)
+        self.assertFalse(sheets._cache.has('Nonexistent Sheet'))
 
 
 class TestCacheUpdateRow(unittest.TestCase):
@@ -105,14 +141,10 @@ class TestCacheUpdateRow(unittest.TestCase):
 
     def test_updates_matching_row(self):
         """Should update row that matches the predicate"""
-        sheets._cache['Test Sheet'] = {
-            'data': [
-                {'Name': 'Alice', 'Score': 10},
-                {'Name': 'Bob', 'Score': 20},
-            ],
-            'time': time.time() - 100,
-            'size_bytes': 100
-        }
+        sheets._cache.set('Test Sheet', [
+            {'Name': 'Alice', 'Score': 10},
+            {'Name': 'Bob', 'Score': 20},
+        ], 100)
 
         result = sheets.cache_update_row(
             'Test Sheet',
@@ -121,16 +153,14 @@ class TestCacheUpdateRow(unittest.TestCase):
         )
 
         self.assertTrue(result)
-        self.assertEqual(sheets._cache['Test Sheet']['data'][1]['Score'], 25)
+        self.assertEqual(sheets._cache.get('Test Sheet').data[1]['Score'], 25)
 
     def test_updates_timestamp(self):
         """Should update timestamp when row is found"""
-        old_time = time.time() - 100
-        sheets._cache['Test Sheet'] = {
-            'data': [{'Name': 'Alice'}],
-            'time': old_time,
-            'size_bytes': 100
-        }
+        sheets._cache.set('Test Sheet', [{'Name': 'Alice'}], 100)
+        cached = sheets._cache.get('Test Sheet')
+        cached.timestamp = time.time() - 100
+        old_time = cached.timestamp
 
         sheets.cache_update_row(
             'Test Sheet',
@@ -138,15 +168,11 @@ class TestCacheUpdateRow(unittest.TestCase):
             {'Score': 10}
         )
 
-        self.assertGreater(sheets._cache['Test Sheet']['time'], old_time)
+        self.assertGreater(sheets._cache.get('Test Sheet').timestamp, old_time)
 
     def test_no_match_returns_false(self):
         """Should return False if no row matches"""
-        sheets._cache['Test Sheet'] = {
-            'data': [{'Name': 'Alice'}],
-            'time': time.time(),
-            'size_bytes': 100
-        }
+        sheets._cache.set('Test Sheet', [{'Name': 'Alice'}], 100)
 
         result = sheets.cache_update_row(
             'Test Sheet',

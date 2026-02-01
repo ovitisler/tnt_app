@@ -7,6 +7,7 @@ import gspread
 from gspread.exceptions import APIError
 from oauth2client.service_account import ServiceAccountCredentials
 
+from models.cache import CacheManager
 from models.metrics import log_api_call, log_rate_limit_error, log_cache_invalidation, get_metrics as _get_metrics
 from models.test_mode import get_simulate_rate_limit
 
@@ -48,8 +49,8 @@ def _get_ttl_for_sheet(sheet_name):
         return CACHE_TTL_STATIC
     return CACHE_TTL_DYNAMIC
 
-# Cache storage: {sheet_name: {'data': [...], 'time': timestamp, 'size_bytes': int}}
-_cache = {}
+# Cache manager instance
+_cache = CacheManager()
 
 
 def _refresh_sheet_background(sheet_name):
@@ -61,14 +62,11 @@ def _refresh_sheet_background(sheet_name):
         size_bytes = len(json.dumps(data).encode('utf-8'))
 
         # Only update cache if it hasn't been modified (by write-through) since we started
-        if sheet_name in _cache and _cache[sheet_name]['time'] > refresh_started:
+        cached = _cache.get(sheet_name)
+        if cached and cached.timestamp > refresh_started:
             print(f"[SHEETS] 🚫 Background refresh skipped for '{sheet_name}' - cache was updated during refresh")
         else:
-            _cache[sheet_name] = {
-                'data': data,
-                'time': time.time(),
-                'size_bytes': size_bytes
-            }
+            _cache.set(sheet_name, data, size_bytes)
             log_api_call('read', sheet_name, size_bytes, source='google-bg')
     except APIError as e:
         if e.response.status_code == 429:
@@ -90,10 +88,9 @@ def _trigger_background_refresh(sheet_name):
             return False
 
         # Recently refreshed? (debounce)
-        if sheet_name in _cache:
-            age = time.time() - _cache[sheet_name]['time']
-            if age < REFRESH_DEBOUNCE_SECONDS:
-                return False
+        cached = _cache.get(sheet_name)
+        if cached and cached.age() < REFRESH_DEBOUNCE_SECONDS:
+            return False
 
         # Mark as pending and start refresh
         _pending_refreshes.add(sheet_name)
@@ -143,28 +140,25 @@ def get_sheet_data(sheet_name):
     - Triggers background refresh if cache is expired
     - Only fetches synchronously on cold start (no cache at all)
     """
-    now = time.time()
-
     # Check for simulated rate limit (for testing)
     if get_simulate_rate_limit():
         log_rate_limit_error(sheet_name, simulated=True)
         raise RateLimitError()
 
     # Check if we have cached data
-    if sheet_name in _cache:
-        cached = _cache[sheet_name]
-        age = now - cached['time']
+    cached = _cache.get(sheet_name)
+    if cached:
         ttl = _get_ttl_for_sheet(sheet_name)
 
-        if age < ttl:
+        if cached.is_fresh(ttl):
             # Fresh cache - return immediately
-            log_api_call('read', sheet_name, cached['size_bytes'], source='cache')
-            return cached['data']
+            log_api_call('read', sheet_name, cached.size_bytes, source='cache')
+            return cached.data
         else:
             # Stale cache - return stale data, trigger background refresh
-            log_api_call('read', sheet_name, cached['size_bytes'], source='cache-stale')
+            log_api_call('read', sheet_name, cached.size_bytes, source='cache-stale')
             _trigger_background_refresh(sheet_name)
-            return cached['data']
+            return cached.data
 
     # Cold start - no cache at all, must fetch synchronously
     try:
@@ -179,11 +173,7 @@ def get_sheet_data(sheet_name):
     size_bytes = len(json.dumps(data).encode('utf-8'))
 
     # Store in cache
-    _cache[sheet_name] = {
-        'data': data,
-        'time': now,
-        'size_bytes': size_bytes
-    }
+    _cache.set(sheet_name, data, size_bytes)
 
     log_api_call('read', sheet_name, size_bytes, source='google')
     return data
@@ -197,13 +187,7 @@ def get_worksheet(sheet_name):
 
 def cache_append_row(sheet_name, row_dict):
     """Update cache after appending a row (write-through)"""
-    if sheet_name in _cache:
-        _cache[sheet_name]['data'].append(row_dict)
-        _cache[sheet_name]['size_bytes'] += len(json.dumps(row_dict).encode('utf-8'))
-        _cache[sheet_name]['time'] = time.time()  # Mark as fresh to prevent background refresh overwriting
-        print(f"[SHEETS] 📝 Cache updated for '{sheet_name}' (append)")
-    else:
-        print(f"[SHEETS] ⚠️ No cache for '{sheet_name}' - write-through skipped")
+    _cache.append_row(sheet_name, row_dict)
 
 
 def cache_update_row(sheet_name, match_fn, updates):
@@ -212,17 +196,7 @@ def cache_update_row(sheet_name, match_fn, updates):
     match_fn: function that takes a row dict and returns True if it's the row to update
     updates: dict of field_name -> new_value
     """
-    if sheet_name in _cache:
-        for row in _cache[sheet_name]['data']:
-            if match_fn(row):
-                row.update(updates)
-                _cache[sheet_name]['time'] = time.time()  # Mark as fresh to prevent background refresh overwriting
-                print(f"[SHEETS] 📝 Cache updated for '{sheet_name}' (update)")
-                return True
-        print(f"[SHEETS] ⚠️ No matching row found in cache for '{sheet_name}'")
-    else:
-        print(f"[SHEETS] ⚠️ No cache for '{sheet_name}' - write-through skipped")
-    return False
+    return _cache.update_row(sheet_name, match_fn, updates)
 
 
 def refresh_computed_sheets(sheet_name):
@@ -234,31 +208,23 @@ def refresh_computed_sheets(sheet_name):
 
 def invalidate_cache(sheet_name=None):
     """Manually invalidate cache. If no sheet_name, invalidates all."""
-    global _cache
-    if sheet_name:
-        if sheet_name in _cache:
-            del _cache[sheet_name]
-            log_cache_invalidation(sheet_name)
-    else:
-        _cache = {}
-        log_cache_invalidation()
+    _cache.invalidate(sheet_name)
+    log_cache_invalidation(sheet_name)
 
 def get_metrics():
     """Get current metrics including cache state"""
-    now = time.time()
     cache_info = {}
     for sheet_name, cached in _cache.items():
-        age = now - cached['time']
         ttl = _get_ttl_for_sheet(sheet_name)
         cache_info[sheet_name] = {
-            'age_seconds': int(age),
+            'age_seconds': int(cached.age()),
             'ttl_seconds': ttl,
-            'expires_in': int(ttl - age),
+            'expires_in': int(ttl - cached.age()),
             'type': 'static' if sheet_name in STATIC_SHEETS else 'dynamic'
         }
 
     metrics = _get_metrics(
-        cache_keys=list(_cache.keys()),
+        cache_keys=_cache.keys(),
         simulate_rate_limit=get_simulate_rate_limit()
     )
     metrics['cache_details'] = cache_info
