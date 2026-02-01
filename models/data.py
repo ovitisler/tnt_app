@@ -91,20 +91,22 @@ def update_attendance_entry(match_fn, updates: dict) -> bool:
 # Internal Helpers
 # =============================================================================
 
+def _get_headers(table: str, worksheet):
+    """Get headers from cache if available, otherwise from worksheet."""
+    cached = _cache.get(table)
+    if cached and cached.data:
+        return list(cached.data[0].keys())
+    return worksheet.row_values(1)
+
+
 def _insert_record(table: str, data: dict) -> dict:
     """Insert a new record into a table."""
     if TIMESTAMP not in data:
         data[TIMESTAMP] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-    # Get headers from cache if available (saves 1 API call)
-    cached = _cache.get(table)
-    if cached and cached.data:
-        headers = list(cached.data[0].keys())
-    else:
-        worksheet = _get_worksheet(table)
-        headers = worksheet.row_values(1)
-
     worksheet = _get_worksheet(table)
+    headers = _get_headers(table, worksheet)
+
     row = [data.get(header, '') for header in headers]
     worksheet.append_row(row, value_input_option='USER_ENTERED')
     log_api_call('write', table, source='google')
@@ -119,13 +121,7 @@ def _update_record(table: str, match_fn, updates: dict) -> bool:
     """Update a record that matches the given predicate."""
     worksheet = _get_worksheet(table)
     all_records = worksheet.get_all_records()
-
-    # Get headers from cache if available (saves 1 API call)
-    cached = _cache.get(table)
-    if cached and cached.data:
-        headers = list(cached.data[0].keys())
-    else:
-        headers = worksheet.row_values(1)
+    headers = _get_headers(table, worksheet)
 
     for i, record in enumerate(all_records):
         if match_fn(record):
