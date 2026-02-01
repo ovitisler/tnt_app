@@ -8,7 +8,9 @@ _metrics = {
     'total_writes': 0,
     'total_bytes': 0,
     'cache_hits': 0,
+    'cache_hits_stale': 0,
     'cache_misses': 0,
+    'background_refreshes': 0,
     'rate_limit_errors': 0,
     'recent_calls': deque(maxlen=100),
 }
@@ -23,7 +25,7 @@ def _format_bytes(num_bytes):
         return f"{num_bytes / (1024 * 1024):.2f}MB"
 
 def log_api_call(operation, sheet_name, size_bytes=None, source='google'):
-    """Log an API call for metrics. source is 'google' or 'cache'"""
+    """Log an API call for metrics. source is 'google', 'google-bg', 'cache', or 'cache-stale'"""
     now = time.time()
     call_record = {
         'time': now,
@@ -37,6 +39,13 @@ def log_api_call(operation, sheet_name, size_bytes=None, source='google'):
 
     if source == 'cache':
         _metrics['cache_hits'] += 1
+    elif source == 'cache-stale':
+        _metrics['cache_hits_stale'] += 1
+    elif source == 'google-bg':
+        _metrics['background_refreshes'] += 1
+        _metrics['total_reads'] += 1
+        if size_bytes:
+            _metrics['total_bytes'] += size_bytes
     elif operation == 'read':
         _metrics['cache_misses'] += 1
         _metrics['total_reads'] += 1
@@ -48,14 +57,20 @@ def log_api_call(operation, sheet_name, size_bytes=None, source='google'):
     # Calculate stats for last minute
     one_min_ago = now - 60
     calls_last_min = [c for c in _metrics['recent_calls'] if c['time'] > one_min_ago]
-    google_calls = sum(1 for c in calls_last_min if c['source'] == 'google')
-    cache_calls = sum(1 for c in calls_last_min if c['source'] == 'cache')
+    google_calls = sum(1 for c in calls_last_min if c['source'] in ('google', 'google-bg'))
+    cache_calls = sum(1 for c in calls_last_min if c['source'] in ('cache', 'cache-stale'))
 
     size_str = f" | Size: {_format_bytes(size_bytes)}" if size_bytes else ""
-    source_icon = "⚡CACHE" if source == 'cache' else "🌐GOOGLE"
+    source_icons = {
+        'cache': '⚡CACHE',
+        'cache-stale': '⚡STALE',
+        'google': '🌐GOOGLE',
+        'google-bg': '🔄BG'
+    }
+    source_icon = source_icons.get(source, source)
     print(f"[SHEETS] {source_icon} {operation.upper()} '{sheet_name}'{size_str} | "
           f"Last 60s: {google_calls} google / {cache_calls} cache | "
-          f"Total: {_metrics['cache_hits']} hits / {_metrics['cache_misses']} misses")
+          f"Total: {_metrics['cache_hits']}+{_metrics['cache_hits_stale']} hits / {_metrics['cache_misses']} misses")
 
 def log_rate_limit_error(sheet_name, simulated=False):
     """Log a rate limit error"""
@@ -78,7 +93,9 @@ def reset_metrics():
         'total_writes': 0,
         'total_bytes': 0,
         'cache_hits': 0,
+        'cache_hits_stale': 0,
         'cache_misses': 0,
+        'background_refreshes': 0,
         'rate_limit_errors': 0,
         'recent_calls': deque(maxlen=100),
     }
@@ -102,7 +119,9 @@ def get_metrics(cache_keys=None, simulate_rate_limit=False):
         'total_bytes': _metrics['total_bytes'],
         'total_bytes_formatted': _format_bytes(_metrics['total_bytes']),
         'cache_hits': _metrics['cache_hits'],
+        'cache_hits_stale': _metrics['cache_hits_stale'],
         'cache_misses': _metrics['cache_misses'],
+        'background_refreshes': _metrics['background_refreshes'],
         'cache_hit_rate': f"{hit_rate:.1f}%",
         'rate_limit_errors': _metrics['rate_limit_errors'],
         'simulate_rate_limit': simulate_rate_limit,

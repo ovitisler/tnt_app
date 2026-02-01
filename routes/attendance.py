@@ -5,6 +5,9 @@ from urllib.parse import unquote
 from models.sheets import (
     get_sheet_data,
     get_worksheet,
+    cache_append_row,
+    cache_update_row,
+    refresh_computed_sheets,
     ATTENDANCE_SCHEDULE_SHEET,
     WEEKLY_ATTENDANCE_TOTALS_SHEET,
     ATTENDANCE_ENTRIES_SHEET,
@@ -180,9 +183,14 @@ def register_attendance_routes(app):
             new_row = []
             for header in headers:
                 new_row.append(data_map.get(header, ''))
-            
+
             attendance_entries_sheet.append_row(new_row, value_input_option='USER_ENTERED')
-            
+
+            # Write-through: update cache with new row
+            cache_append_row(ATTENDANCE_ENTRIES_SHEET, data_map)
+            # Trigger background refresh for computed Totals sheet
+            refresh_computed_sheets(ATTENDANCE_ENTRIES_SHEET)
+
             return redirect(f'/attendance/{date_str}/team/{team}')
         except Exception as e:
             return redirect(url_for('attendance'))
@@ -224,17 +232,30 @@ def register_attendance_routes(app):
                         
                         # Update all editable fields based on form state
                         protected_fields = ['date_str', 'team_name', 'kid_name', 'Name', 'Team', 'Date', 'Timestamp', 'timestamp']
-                        
+                        updates = {}
+
                         for field_name in entry.keys():
                             if field_name not in protected_fields:
                                 try:
                                     col_index = headers.index(field_name) + 1
                                     value = 'TRUE' if field_name in request.form else 'FALSE'
                                     attendance_entries_sheet.update_cell(row_num, col_index, value)
+                                    updates[field_name] = value
                                 except ValueError:
                                     continue
+
+                        # Write-through: update cache
+                        cache_update_row(
+                            ATTENDANCE_ENTRIES_SHEET,
+                            lambda row: (dates_match(row.get('Date'), day_data.get('Date'))
+                                        and row.get('Team', '').lower() == team_name.lower()
+                                        and row.get('Name', '').lower() == kid_name.lower()),
+                            updates
+                        )
+                        # Trigger background refresh for computed Totals sheet
+                        refresh_computed_sheets(ATTENDANCE_ENTRIES_SHEET)
                         break
-                
+
                 return redirect(f'/attendance/{date_str}/team/{team_name}/kid/{kid_name}')
             
             return redirect(url_for('attendance'))

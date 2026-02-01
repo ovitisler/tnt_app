@@ -1,9 +1,11 @@
+import json
+import os
+import threading
+import time
+
 import gspread
 from gspread.exceptions import APIError
 from oauth2client.service_account import ServiceAccountCredentials
-import os
-import json
-import time
 
 from models.metrics import log_api_call, log_rate_limit_error, log_cache_invalidation, get_metrics as _get_metrics
 from models.test_mode import get_simulate_rate_limit
@@ -19,7 +21,12 @@ ATTENDANCE_ENTRIES_SHEET = 'Attendance Entries RAW'
 
 # Cache configuration - tiered TTLs based on how often data changes
 CACHE_TTL_STATIC = 86400    # 1 day - sheets that rarely change
-CACHE_TTL_DYNAMIC = 120     # 2 min - sheets that change with writes
+CACHE_TTL_DYNAMIC = 30     # 2 min - sheets that change with writes
+
+# Stale-while-revalidate config
+REFRESH_DEBOUNCE_SECONDS = 5  # Don't refresh if we refreshed within this window
+_pending_refreshes = set()    # Sheets currently being refreshed in background
+_refresh_lock = threading.Lock()
 
 # Static sheets - only change when admin updates them (monthly or less)
 STATIC_SHEETS = [
@@ -43,6 +50,58 @@ def _get_ttl_for_sheet(sheet_name):
 
 # Cache storage: {sheet_name: {'data': [...], 'time': timestamp, 'size_bytes': int}}
 _cache = {}
+
+
+def _refresh_sheet_background(sheet_name):
+    """Background task to refresh a sheet's cache"""
+    refresh_started = time.time()
+    try:
+        spreadsheet = _get_spreadsheet_instance()
+        data = spreadsheet.worksheet(sheet_name).get_all_records()
+        size_bytes = len(json.dumps(data).encode('utf-8'))
+
+        # Only update cache if it hasn't been modified (by write-through) since we started
+        if sheet_name in _cache and _cache[sheet_name]['time'] > refresh_started:
+            print(f"[SHEETS] 🚫 Background refresh skipped for '{sheet_name}' - cache was updated during refresh")
+        else:
+            _cache[sheet_name] = {
+                'data': data,
+                'time': time.time(),
+                'size_bytes': size_bytes
+            }
+            log_api_call('read', sheet_name, size_bytes, source='google-bg')
+    except APIError as e:
+        if e.response.status_code == 429:
+            log_rate_limit_error(sheet_name)
+        else:
+            print(f"[SHEETS] ❌ Background refresh failed for '{sheet_name}': {e}")
+    except Exception as e:
+        print(f"[SHEETS] ❌ Background refresh failed for '{sheet_name}': {e}")
+    finally:
+        with _refresh_lock:
+            _pending_refreshes.discard(sheet_name)
+
+
+def _trigger_background_refresh(sheet_name):
+    """Trigger a background refresh if not already pending and not recently refreshed"""
+    with _refresh_lock:
+        # Already refreshing this sheet?
+        if sheet_name in _pending_refreshes:
+            return False
+
+        # Recently refreshed? (debounce)
+        if sheet_name in _cache:
+            age = time.time() - _cache[sheet_name]['time']
+            if age < REFRESH_DEBOUNCE_SECONDS:
+                return False
+
+        # Mark as pending and start refresh
+        _pending_refreshes.add(sheet_name)
+
+    thread = threading.Thread(target=_refresh_sheet_background, args=(sheet_name,), daemon=True)
+    thread.start()
+    print(f"[SHEETS] 🔄 Background refresh triggered for '{sheet_name}'")
+    return True
 
 class RateLimitError(Exception):
     """Raised when Google Sheets API rate limit is hit"""
@@ -78,7 +137,12 @@ def _get_spreadsheet_instance():
     return _spreadsheet
 
 def get_sheet_data(sheet_name):
-    """Get data from any sheet, with caching"""
+    """
+    Get data from any sheet using stale-while-revalidate pattern.
+    - Always returns cached data immediately if available (even if stale)
+    - Triggers background refresh if cache is expired
+    - Only fetches synchronously on cold start (no cache at all)
+    """
     now = time.time()
 
     # Check for simulated rate limit (for testing)
@@ -86,16 +150,23 @@ def get_sheet_data(sheet_name):
         log_rate_limit_error(sheet_name, simulated=True)
         raise RateLimitError()
 
-    # Check cache with tiered TTL
+    # Check if we have cached data
     if sheet_name in _cache:
         cached = _cache[sheet_name]
         age = now - cached['time']
         ttl = _get_ttl_for_sheet(sheet_name)
+
         if age < ttl:
+            # Fresh cache - return immediately
             log_api_call('read', sheet_name, cached['size_bytes'], source='cache')
             return cached['data']
+        else:
+            # Stale cache - return stale data, trigger background refresh
+            log_api_call('read', sheet_name, cached['size_bytes'], source='cache-stale')
+            _trigger_background_refresh(sheet_name)
+            return cached['data']
 
-    # Cache miss - fetch from Google
+    # Cold start - no cache at all, must fetch synchronously
     try:
         spreadsheet = _get_spreadsheet_instance()
         data = spreadsheet.worksheet(sheet_name).get_all_records()
@@ -120,27 +191,46 @@ def get_sheet_data(sheet_name):
 def get_worksheet(sheet_name):
     """Get a worksheet for direct operations (writes, updates)"""
     log_api_call('write', sheet_name, source='google')
-
-    # Smart cache invalidation based on what's being written
-    if sheet_name in INVALIDATION_MAP:
-        sheets_to_invalidate = INVALIDATION_MAP[sheet_name]
-        if sheets_to_invalidate is None:
-            # None means invalidate everything (e.g., for testing)
-            invalidate_cache()
-        else:
-            # Only invalidate related sheets
-            for related_sheet in sheets_to_invalidate:
-                if related_sheet in _cache:
-                    del _cache[related_sheet]
-                    log_cache_invalidation(related_sheet)
-    else:
-        # Unknown sheet - just invalidate itself
-        if sheet_name in _cache:
-            del _cache[sheet_name]
-            log_cache_invalidation(sheet_name)
-
     spreadsheet = _get_spreadsheet_instance()
     return spreadsheet.worksheet(sheet_name)
+
+
+def cache_append_row(sheet_name, row_dict):
+    """Update cache after appending a row (write-through)"""
+    if sheet_name in _cache:
+        _cache[sheet_name]['data'].append(row_dict)
+        _cache[sheet_name]['size_bytes'] += len(json.dumps(row_dict).encode('utf-8'))
+        _cache[sheet_name]['time'] = time.time()  # Mark as fresh to prevent background refresh overwriting
+        print(f"[SHEETS] 📝 Cache updated for '{sheet_name}' (append)")
+    else:
+        print(f"[SHEETS] ⚠️ No cache for '{sheet_name}' - write-through skipped")
+
+
+def cache_update_row(sheet_name, match_fn, updates):
+    """
+    Update cache after modifying a row (write-through).
+    match_fn: function that takes a row dict and returns True if it's the row to update
+    updates: dict of field_name -> new_value
+    """
+    if sheet_name in _cache:
+        for row in _cache[sheet_name]['data']:
+            if match_fn(row):
+                row.update(updates)
+                _cache[sheet_name]['time'] = time.time()  # Mark as fresh to prevent background refresh overwriting
+                print(f"[SHEETS] 📝 Cache updated for '{sheet_name}' (update)")
+                return True
+        print(f"[SHEETS] ⚠️ No matching row found in cache for '{sheet_name}'")
+    else:
+        print(f"[SHEETS] ⚠️ No cache for '{sheet_name}' - write-through skipped")
+    return False
+
+
+def refresh_computed_sheets(sheet_name):
+    """Trigger background refresh for computed sheets (Totals) after writing to RAW sheets"""
+    if sheet_name in INVALIDATION_MAP:
+        for related_sheet in INVALIDATION_MAP[sheet_name]:
+            if related_sheet != sheet_name:
+                _trigger_background_refresh(related_sheet)
 
 def invalidate_cache(sheet_name=None):
     """Manually invalidate cache. If no sheet_name, invalidates all."""

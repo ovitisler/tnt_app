@@ -4,26 +4,11 @@ from datetime import datetime
 from flask import jsonify, request
 
 from models.metrics import reset_metrics
-from models.sheets import (
-    invalidate_cache,
-    get_worksheet,
-    COMPLETED_SECTIONS_SHEET,
-    WEEKLY_TOTALS_SHEET,
-    ATTENDANCE_ENTRIES_SHEET,
-    WEEKLY_ATTENDANCE_TOTALS_SHEET,
-)
+from models.sheets import invalidate_cache, get_worksheet
 from models.test_mode import set_simulate_rate_limit, get_simulate_rate_limit
 
 # Test sheet config
 LOAD_TEST_SHEET = 'Load Test Entries'
-
-# Sheets to invalidate on test write (dynamic only, not static)
-TEST_INVALIDATION_SHEETS = [
-    COMPLETED_SECTIONS_SHEET,
-    WEEKLY_TOTALS_SHEET,
-    ATTENDANCE_ENTRIES_SHEET,
-    WEEKLY_ATTENDANCE_TOTALS_SHEET,
-]
 
 # Test data for realistic write simulation
 TEST_NAMES = ["Test Kid A", "Test Kid B", "Test Kid C", "Test Kid D", "Test Kid E"]
@@ -70,7 +55,7 @@ def register_testing_routes(app):
     def test_write():
         """
         Write a test row to the Load Test Entries sheet.
-        Simulates real write behavior by invalidating only dynamic caches.
+        Triggers background refresh for stale-while-revalidate pattern.
         """
         try:
             # Get data from request or generate random test data
@@ -92,13 +77,12 @@ def register_testing_routes(app):
             ]
             worksheet.append_row(row, value_input_option='USER_ENTERED')
 
-            # Invalidate only dynamic sheets (not static like Schedule, Roster)
-            for sheet in TEST_INVALIDATION_SHEETS:
-                invalidate_cache(sheet)
+            # get_worksheet already triggers background refresh for related sheets
+            # No need to manually invalidate - stale-while-revalidate handles it
 
             return jsonify({
                 'success': True,
-                'message': 'Test row written and dynamic caches invalidated',
+                'message': 'Test row written, background refresh triggered',
                 'row': row
             })
 

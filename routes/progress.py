@@ -4,6 +4,8 @@ from urllib.parse import unquote
 from models.sheets import (
     get_sheet_data,
     get_worksheet,
+    cache_update_row,
+    refresh_computed_sheets,
     MASTER_ROSTER_SHEET,
     COMPLETED_SECTIONS_SHEET,
 )
@@ -109,17 +111,32 @@ def register_progress_routes(app):
                         
                         # Update all editable fields based on form state
                         protected_fields = ['student_name', 'section_index', 'Name', 'Team', 'Date', 'Section', 'Timestamp', 'timestamp']
-                        
+                        updates = {}
+
                         for field_name in entry.keys():
                             if field_name not in protected_fields:
                                 try:
                                     col_index = headers.index(field_name) + 1
                                     value = 'TRUE' if field_name in request.form else 'FALSE'
                                     completed_sections_sheet.update_cell(row_num, col_index, value)
+                                    updates[field_name] = value
                                 except ValueError:
                                     continue
+
+                        # Write-through: update cache
+                        target_date = target_section.get('Date')
+                        target_section_val = str(target_section.get('Section', ''))
+                        cache_update_row(
+                            COMPLETED_SECTIONS_SHEET,
+                            lambda row: (row.get('Name', '').lower() == student_name.lower()
+                                        and row.get('Date') == target_date
+                                        and str(row.get('Section', '')) == target_section_val),
+                            updates
+                        )
+                        # Trigger background refresh for computed Totals sheet
+                        refresh_computed_sheets(COMPLETED_SECTIONS_SHEET)
                         break
-                
+
                 return redirect(f'/progress/student/{student_name}/section/{section_index}')
             
             return redirect(url_for('progress'))

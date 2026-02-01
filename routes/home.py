@@ -6,6 +6,9 @@ from urllib.parse import unquote
 from models.sheets import (
     get_sheet_data,
     get_worksheet,
+    cache_append_row,
+    cache_update_row,
+    refresh_computed_sheets,
     SCHEDULE_SHEET,
     WEEKLY_TOTALS_SHEET,
     COMPLETED_SECTIONS_SHEET,
@@ -73,10 +76,10 @@ def register_home_routes(app):
                 
                 # Get completed sections for this date and team
                 all_sections = get_sheet_data(COMPLETED_SECTIONS_SHEET)
-                
+
                 # Filter sections by date and team using flexible date matching
-                team_sections = [entry for entry in all_sections 
-                               if dates_match(entry.get('Date'), day_data.get('Date')) 
+                team_sections = [entry for entry in all_sections
+                               if dates_match(entry.get('Date'), day_data.get('Date'))
                                and entry.get('Team', '').lower() == team_name.lower()]
                 
                 # Group sections by kid name
@@ -85,13 +88,13 @@ def register_home_routes(app):
                     kid_name = section.get('Name', '')
                     if kid_name:
                         kids_sections[kid_name].append(section.get('Section', ''))
-                
-                return render_template('home_team_details.html', 
-                                     day_data=day_data, 
+
+                return render_template('home_team_details.html',
+                                     day_data=day_data,
                                      date_str=date_str,
                                      team_data=team_data,
                                      team_name=team_name,
-                                     kids_sections=kids_sections)
+                                     kids_sections=dict(kids_sections))
             else:
                 return redirect(url_for('home'))
         except Exception as e:
@@ -191,9 +194,14 @@ def register_home_routes(app):
             new_row = []
             for header in headers:
                 new_row.append(data_map.get(header, ''))
-            
+
             completed_sections_sheet.append_row(new_row, value_input_option='USER_ENTERED')
-            
+
+            # Write-through: update cache with new row
+            cache_append_row(COMPLETED_SECTIONS_SHEET, data_map)
+            # Trigger background refresh for computed Totals sheet
+            refresh_computed_sheets(COMPLETED_SECTIONS_SHEET)
+
             return redirect(f'/home/{date_str}/team/{team}')
         except Exception as e:
             return redirect(url_for('home'))
@@ -237,17 +245,32 @@ def register_home_routes(app):
                         
                         # Update all editable fields based on form state
                         protected_fields = ['date_str', 'team_name', 'kid_name', 'section_name', 'Name', 'Team', 'Date', 'Section', 'Timestamp', 'timestamp']
-                        
+                        updates = {}
+
                         for field_name in entry.keys():
                             if field_name not in protected_fields:
                                 try:
                                     col_index = headers.index(field_name) + 1
                                     value = 'TRUE' if field_name in request.form else 'FALSE'
                                     completed_sections_sheet.update_cell(row_num, col_index, value)
+                                    updates[field_name] = value
                                 except ValueError:
                                     continue
+
+                        # Write-through: update cache
+                        entry_date = day_data.get('Date')
+                        cache_update_row(
+                            COMPLETED_SECTIONS_SHEET,
+                            lambda row: (dates_match(row.get('Date'), entry_date)
+                                        and row.get('Team', '').lower() == team_name.lower()
+                                        and row.get('Name', '').lower() == kid_name.lower()
+                                        and str(row.get('Section', '')) == str(section_name)),
+                            updates
+                        )
+                        # Trigger background refresh for computed Totals sheet
+                        refresh_computed_sheets(COMPLETED_SECTIONS_SHEET)
                         break
-                
+
                 return redirect(f'/home/{date_str}/team/{team_name}/kid/{kid_name}/section/{section_name}')
             
             return redirect(url_for('home'))
