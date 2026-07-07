@@ -12,7 +12,8 @@ from models.data import (
     get_roster,
     get_weekly_totals,
     get_completed_sections,
-    insert_completed_section,
+    get_book_sections,
+    upsert_completed_section,
     update_completed_section,
 )
 from models.utils import dates_match, find_day_by_date, url_to_date
@@ -89,10 +90,9 @@ def register_home_routes(app):
             return redirect(url_for('home'))
 
     @app.route('/home/<date_str>/team/<team_name>/record_section')
-    def record_section_form(date_str, team_name):
+    def record_section_kid_picker(date_str, team_name):
         try:
             schedule_data = get_schedule()
-
             display_date = url_to_date(date_str)
             day_data = find_day_by_date(schedule_data, display_date)
 
@@ -100,12 +100,75 @@ def register_home_routes(app):
                 roster_data = get_roster()
                 team_kids = [row[NAME] for row in roster_data if row.get(GROUP, '').lower() == team_name.lower()]
 
+                return render_template('record_section_kid_picker.html',
+                                     day_data=day_data,
+                                     date_str=date_str,
+                                     team_name=team_name,
+                                     team_kids=team_kids)
+            else:
+                return redirect(url_for('home'))
+        except Exception as e:
+            return redirect(url_for('home'))
+
+    @app.route('/home/<date_str>/team/<team_name>/record_section/kid/<path:kid_name>')
+    def record_section_list(date_str, team_name, kid_name):
+        try:
+            schedule_data = get_schedule()
+            display_date = url_to_date(date_str)
+            day_data = find_day_by_date(schedule_data, display_date)
+
+            if day_data:
+                kid_name = unquote(kid_name)
+                all_sections = get_completed_sections()
+                kid_sections = [s for s in all_sections if s.get(NAME, '').lower() == kid_name.lower()]
+
+                history = {}
+                for record in kid_sections:
+                    sec = str(record.get(SECTION, ''))
+                    if sec not in history:
+                        history[sec] = {'main_date': None, 'silver': False, 'gold': False}
+                    if str(record.get(SECTION_COMPLETE, '')).lower() in ['true', 'yes', '1']:
+                        if not history[sec]['main_date']:
+                            history[sec]['main_date'] = record.get(DATE, '')
+                    if str(record.get(SILVER_CREDIT, '')).lower() in ['true', 'yes', '1']:
+                        history[sec]['silver'] = True
+                    if str(record.get(GOLD_CREDIT, '')).lower() in ['true', 'yes', '1']:
+                        history[sec]['gold'] = True
+
+                book_sections = get_book_sections()
+                sections_with_history = []
+                for row in book_sections:
+                    sec = str(row.get(SECTION, ''))
+                    h = history.get(sec, {'main_date': None, 'silver': False, 'gold': False})
+                    sections_with_history.append({'section': sec, **h})
+
+                return render_template('record_section_list.html',
+                                     day_data=day_data,
+                                     date_str=date_str,
+                                     team_name=team_name,
+                                     kid_name=kid_name,
+                                     sections=sections_with_history)
+            else:
+                return redirect(url_for('home'))
+        except Exception as e:
+            return redirect(url_for('home'))
+
+    @app.route('/home/<date_str>/team/<team_name>/record_section/kid/<path:kid_name>/section/<path:section_name>')
+    def record_section_form(date_str, team_name, kid_name, section_name):
+        try:
+            schedule_data = get_schedule()
+            display_date = url_to_date(date_str)
+            day_data = find_day_by_date(schedule_data, display_date)
+
+            if day_data:
+                kid_name = unquote(kid_name)
+                section_name = unquote(section_name)
                 return render_template('record_section_form.html',
                                      day_data=day_data,
                                      date_str=date_str,
                                      team_name=team_name,
-                                     team_kids=team_kids,
-                                     schedule_data=schedule_data)
+                                     kid_name=kid_name,
+                                     section_name=section_name)
             else:
                 return redirect(url_for('home'))
         except Exception as e:
@@ -150,14 +213,14 @@ def register_home_routes(app):
             date_str = request.form.get('date_str')
             team = request.form.get('team')
 
-            insert_completed_section({
+            upsert_completed_section({
                 NAME: request.form.get('name'),
                 TEAM: team,
                 DATE: request.form.get('date'),
                 SECTION: request.form.get('section'),
-                SECTION_COMPLETE: SECTION_COMPLETE in request.form,
-                SILVER_CREDIT: SILVER_CREDIT in request.form,
-                GOLD_CREDIT: GOLD_CREDIT in request.form,
+                SECTION_COMPLETE: 'TRUE' if SECTION_COMPLETE in request.form else 'FALSE',
+                SILVER_CREDIT: 'TRUE' if SILVER_CREDIT in request.form else 'FALSE',
+                GOLD_CREDIT: 'TRUE' if GOLD_CREDIT in request.form else 'FALSE',
             })
 
             return redirect(f'/home/{date_str}/team/{team}')

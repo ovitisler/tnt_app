@@ -1,6 +1,6 @@
 {% set show_header = true %}
 {% set page_title = "Record Section" %}
-{% set back_url = "/home/" + date_str + "/team/" + team_name %}
+{% set back_url = "/home/" + date_str + "/team/" + team_name + "/record_section/kid/" + kid_name|urlencode %}
 {% extends "fullscreen_base.html" %}
 
 {% block title %}TNT Reading Teams Tracker - Record Section{% endblock %}
@@ -13,36 +13,27 @@
     </div>
 
     <form id="sectionForm" method="POST" action="/submit_section">
-    
         <input type="hidden" name="team" value="{{ team_name }}">
         <input type="hidden" name="date_str" value="{{ date_str }}">
-        
+        <input type="hidden" name="date" value="{{ day_data.Date }}">
+        <input type="hidden" name="name" value="{{ kid_name }}">
+        <input type="hidden" name="section" value="{{ section_name }}">
+
         <div class="form-group">
-            <label for="name">Student Name:</label>
-            <select name="name" id="name" required>
-                <option value="">Select a student...</option>
-                {% for kid in team_kids %}
-                <option value="{{ kid }}">{{ kid }}</option>
-                {% endfor %}
-            </select>
+            <label>Student</label>
+            <div style="padding: 10px; background: #f5f5f5; border-radius: 8px; color: #666;">{{ kid_name }}</div>
         </div>
-        
+
         <div class="form-group">
-            <label for="date">Date:</label>
-            <select name="date" id="date" required>
-                {% for schedule_item in schedule_data %}
-                <option value="{{ schedule_item.Date }}" {% if schedule_item.Date == day_data.Date %}selected{% endif %}>
-                    {{ schedule_item.Date }}
-                </option>
-                {% endfor %}
-            </select>
+            <label>Date</label>
+            <div style="padding: 10px; background: #f5f5f5; border-radius: 8px; color: #666;">{{ day_data.Date }}</div>
         </div>
-        
+
         <div class="form-group">
-            <label for="section">Section:</label>
-            <input type="text" name="section" id="section" placeholder="e.g., 1.1, 2.3, etc." required>
+            <label>Section</label>
+            <div style="padding: 10px; background: #f5f5f5; border-radius: 8px; color: #666;">{{ section_name }}</div>
         </div>
-        
+
         <div class="form-group">
             <div class="toggle-group">
                 <span class="toggle-label">Section Complete</span>
@@ -68,7 +59,7 @@
                 </label>
             </div>
         </div>
-        
+
         <div class="form-buttons">
             <button type="submit" class="submit-button">Record Section</button>
             <button type="button" class="cancel-button" onclick="window.history.back()">Cancel</button>
@@ -88,7 +79,6 @@ document.getElementById('sectionForm').addEventListener('submit', function(event
         redirect: 'follow'
     }).then(response => {
         if (response.ok || response.redirected) {
-            // Navigate to team page with fresh request (not cached history)
             window.location.href = '/home/{{ date_str }}/team/{{ team_name }}';
         } else {
             alert('Error recording section');

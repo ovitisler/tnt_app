@@ -1,7 +1,7 @@
 from flask import Flask, render_template, jsonify
 
 from models.data import get_metrics, RateLimitError
-from models.utils import date_to_url
+from models.utils import date_to_url, date_to_mmdd
 from routes.home import register_home_routes
 from routes.attendance import register_attendance_routes
 from routes.progress import register_progress_routes
@@ -11,6 +11,7 @@ app = Flask(__name__)
 
 # Add template filters
 app.jinja_env.filters['date_to_url'] = date_to_url
+app.jinja_env.filters['date_to_mmdd'] = date_to_mmdd
 
 # Register route modules
 register_home_routes(app)

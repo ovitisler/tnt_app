@@ -19,6 +19,7 @@ WEEKLY_TOTALS_SHEET = 'Weekly Totals'
 WEEKLY_ATTENDANCE_TOTALS_SHEET = 'Weekly Attendance Totals'
 COMPLETED_SECTIONS_SHEET = 'Completed Sections RAW'
 ATTENDANCE_ENTRIES_SHEET = 'Attendance Entries RAW'
+BOOK_SECTIONS_SHEET = 'Book Sections'
 
 # Cache configuration - tiered TTLs based on how often data changes
 CACHE_TTL_STATIC = 86400    # 1 day - sheets that rarely change
@@ -34,6 +35,7 @@ STATIC_SHEETS = [
     SCHEDULE_SHEET,
     ATTENDANCE_SCHEDULE_SHEET,
     MASTER_ROSTER_SHEET,
+    BOOK_SECTIONS_SHEET,
 ]
 
 # Sheets to invalidate when writing to RAW sheets

@@ -60,6 +60,13 @@ def date_to_url(date_str):
     except:
         return date_str
 
+def date_to_mmdd(date_str):
+    """Convert any date string to mm/dd format"""
+    try:
+        return parse_date_string(str(date_str)).strftime('%-m/%-d')
+    except:
+        return str(date_str)
+
 def url_to_date(url_date):
     """Convert URL date (YYYY-MM-DD) back to display format"""
     try:

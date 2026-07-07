@@ -1,0 +1,26 @@
+{% set show_header = true %}
+{% set page_title = "Record Section" %}
+{% set back_url = "/home/" + date_str + "/team/" + team_name %}
+{% extends "fullscreen_base.html" %}
+
+{% block title %}TNT Reading Teams Tracker - Record Section{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <div class="form-header">
+        <div class="team-badge {{ team_name|lower }}">{{ team_name }} Team</div>
+        <h2>Pick a Student</h2>
+        <p class="subtitle">{{ day_data.Date }}</p>
+    </div>
+
+    <div class="kids-list">
+        {% for kid in team_kids %}
+        <div class="kid-item" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;"
+             onclick="window.location.href='/home/{{ date_str }}/team/{{ team_name }}/record_section/kid/{{ kid|urlencode }}'">
+            <span>{{ kid }}</span>
+            <span class="arrow-icon">→</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

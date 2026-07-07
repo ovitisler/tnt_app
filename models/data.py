@@ -5,7 +5,7 @@ Routes should use this module for all data operations.
 import threading
 from datetime import datetime
 
-from models.fields import TIMESTAMP
+from models.fields import TIMESTAMP, NAME, DATE, SECTION
 from models.sheets import (
     get_sheet_data as _get_sheet_data,
     get_worksheet as _get_worksheet,
@@ -19,6 +19,7 @@ from models.sheets import (
     WEEKLY_ATTENDANCE_TOTALS_SHEET,
     COMPLETED_SECTIONS_SHEET,
     ATTENDANCE_ENTRIES_SHEET,
+    BOOK_SECTIONS_SHEET,
     RateLimitError,
     get_metrics,
 )
@@ -64,6 +65,11 @@ def get_attendance_entries():
     return _get_sheet_data(ATTENDANCE_ENTRIES_SHEET)
 
 
+def get_book_sections():
+    """Get all sections from the Book Sections sheet."""
+    return _get_sheet_data(BOOK_SECTIONS_SHEET)
+
+
 # =============================================================================
 # Write Operations
 # =============================================================================
@@ -71,6 +77,37 @@ def get_attendance_entries():
 def insert_completed_section(data: dict) -> dict:
     """Record a completed section for a student."""
     return _insert_record(COMPLETED_SECTIONS_SHEET, data)
+
+
+def upsert_completed_section(data: dict) -> dict:
+    """Insert or update a completed section. Updates existing row if (name, date, section) already exists."""
+    name = data.get(NAME, '')
+    date = data.get(DATE, '')
+    section = str(data.get(SECTION, ''))
+
+    existing = get_completed_sections()
+    match = next(
+        (r for r in existing
+         if r.get(NAME, '').lower() == name.lower()
+         and r.get(DATE) == date
+         and str(r.get(SECTION, '')) == section),
+        None
+    )
+
+    if match:
+        updates = {k: v for k, v in data.items() if k not in [NAME, DATE, SECTION, TIMESTAMP]}
+        _update_record(
+            COMPLETED_SECTIONS_SHEET,
+            lambda row: (
+                row.get(NAME, '').lower() == name.lower()
+                and row.get(DATE) == date
+                and str(row.get(SECTION, '')) == section
+            ),
+            updates
+        )
+        return data
+    else:
+        return _insert_record(COMPLETED_SECTIONS_SHEET, data)
 
 
 def insert_attendance_entry(data: dict) -> dict:
