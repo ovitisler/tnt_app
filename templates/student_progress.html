@@ -21,15 +21,15 @@
 <div class="team-stats">
     <div class="stats-grid">
         <div class="stat-item">
-            <span class="stat-label">Total Sections Completed</span>
+            <span class="stat-label">Sections</span>
             <span class="stat-value">{{ total_sections }}</span>
         </div>
         <div class="stat-item">
-            <span class="stat-label">Silver Credits Earned</span>
+            <span class="stat-label">Silver</span>
             <span class="stat-value">{{ silver_earned }}</span>
         </div>
         <div class="stat-item">
-            <span class="stat-label">Gold Credits Earned</span>
+            <span class="stat-label">Gold</span>
             <span class="stat-value">{{ gold_earned }}</span>
         </div>
     </div>
@@ -37,17 +37,20 @@
 
 <div class="kids-list">
     <h3>Completed Sections</h3>
-    {% if student_sections %}
+    {% if coalesced_sections %}
     <div class="kids-grid">
-        {% for section in student_sections %}
-        <div class="kid-item">
-            <div class="section-row" onclick="window.location.href='/progress/student/{{ student_name|urlencode }}/section/{{ loop.index0 }}'">
-                <div>
-                    <span class="section-name">Section {{ section.Section }}</span>
-                    <div style="font-size: 0.9em; color: #666; margin-top: 2px;">{{ section.Date }}</div>
-                </div>
-                <span class="arrow-icon">→</span>
+        {% for item in coalesced_sections %}
+        <div class="section-row"
+             onclick="window.location.href='/progress/student/{{ student_name|urlencode }}/section/{{ item.section|urlencode }}'">
+            <div style="flex:1;">
+                <span class="section-name">Section {{ item.section }}</span>
+                <span style="margin-left: 12px; font-size: 0.8em; color: #888;">
+                    Main: {% if item.main_date %}<span style="color:#4caf50;">✓ {{ item.main_date|date_to_mmdd }}</span>{% else %}—{% endif %}
+                    &nbsp;Silver: {% if item.silver_date %}✅{% else %}—{% endif %}
+                    &nbsp;Gold: {% if item.gold_date %}✅{% else %}—{% endif %}
+                </span>
             </div>
+            <span class="arrow-icon">→</span>
         </div>
         {% endfor %}
     </div>

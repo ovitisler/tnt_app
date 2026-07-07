@@ -1,19 +1,19 @@
 {% set show_header = true %}
 {% set page_title = "Section " + section_entry.Section|string %}
-{% set back_url = "/progress/student/" + student_name|urlencode %}
+{% set back_url = "/progress/student/" + student_name|urlencode + "/section/" + section_entry.Section|string|urlencode %}
 {% extends "base.html" %}
 
 {% block title %}TNT Reading Teams Tracker - {{ student_name }} - Section {{ section_entry.Section }}{% endblock %}
 
 {% block content %}
-<a href="/progress/student/{{ student_name|urlencode }}" class="back-button">
-    ← Back to {{ student_name }}
+<a href="/progress/student/{{ student_name|urlencode }}/section/{{ section_entry.Section|string|urlencode }}" class="back-button">
+    ← Back to Section {{ section_entry.Section }}
 </a>
 
 <div class="page-header">
     <div class="team-badge {{ section_entry.Team|lower }}">{{ section_entry.Team }} Team</div>
     <h1>{{ student_name }}</h1>
-    <p class="subtitle">Section {{ section_entry.Section }} - {{ section_entry.Date }}</p>
+    <p class="subtitle">Section {{ section_entry.Section }} &mdash; {{ section_entry.Date|date_to_mmdd }}</p>
 </div>
 
 {% if section_entry %}
