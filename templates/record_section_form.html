@@ -34,7 +34,59 @@
             <div style="padding: 10px; background: #f5f5f5; border-radius: 8px; color: #666;">{{ section_name }}</div>
         </div>
 
+        {% if history.main_date or history.silver_date or history.gold_date %}
+        <div style="
+            background: linear-gradient(135deg, #f0f4ff, #e8f5e9);
+            border: 1px solid #c5cae9;
+            border-radius: 12px;
+            padding: 14px 16px;
+            margin-bottom: 20px;
+        ">
+            <p style="margin: 0 0 10px 0; font-size: 0.75em; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #5c6bc0;">Previously Recorded</p>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    {% if history.main_date %}
+                    <span style="font-size: 1.1em;">✅</span>
+                    <span style="font-size: 0.9em; color: #333;">Main &mdash; <span style="color: #5c6bc0; font-weight: 600;">{{ history.main_date|date_to_mmdd }}</span></span>
+                    {% else %}
+                    <span style="font-size: 1.1em; opacity: 0.3;">⬜</span>
+                    <span style="font-size: 0.9em; color: #aaa;">Main &mdash; not yet</span>
+                    {% endif %}
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    {% if history.silver_date %}
+                    <span style="font-size: 1.1em;">✅</span>
+                    <span style="font-size: 0.9em; color: #333;">Silver &mdash; <span style="color: #5c6bc0; font-weight: 600;">{{ history.silver_date|date_to_mmdd }}</span></span>
+                    {% else %}
+                    <span style="font-size: 1.1em; opacity: 0.3;">⬜</span>
+                    <span style="font-size: 0.9em; color: #aaa;">Silver &mdash; not yet</span>
+                    {% endif %}
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    {% if history.gold_date %}
+                    <span style="font-size: 1.1em;">✅</span>
+                    <span style="font-size: 0.9em; color: #333;">Gold &mdash; <span style="color: #5c6bc0; font-weight: 600;">{{ history.gold_date|date_to_mmdd }}</span></span>
+                    {% else %}
+                    <span style="font-size: 1.1em; opacity: 0.3;">⬜</span>
+                    <span style="font-size: 0.9em; color: #aaa;">Gold &mdash; not yet</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% set all_done = history.main_date and history.silver_date and history.gold_date %}
+        {% if all_done %}
+        <div style="text-align:center; padding: 24px 0; color: #5c6bc0;">
+            <div style="font-size: 2em; margin-bottom: 8px;">🎉</div>
+            <p style="font-weight: 600; margin: 0;">All credits already recorded!</p>
+        </div>
+        <div class="form-buttons">
+            <button type="button" class="cancel-button" onclick="window.history.back()">Go Back</button>
+        </div>
+        {% else %}
         <div class="form-group">
+            {% if not history.main_date %}
             <div class="toggle-group">
                 <span class="toggle-label">Section Complete</span>
                 <label class="toggle-switch">
@@ -42,7 +94,9 @@
                     <span class="slider"></span>
                 </label>
             </div>
+            {% endif %}
 
+            {% if not history.silver_date %}
             <div class="toggle-group">
                 <span class="toggle-label">Silver Credit</span>
                 <label class="toggle-switch">
@@ -50,7 +104,9 @@
                     <span class="slider"></span>
                 </label>
             </div>
+            {% endif %}
 
+            {% if not history.gold_date %}
             <div class="toggle-group">
                 <span class="toggle-label">Gold Credit</span>
                 <label class="toggle-switch">
@@ -58,12 +114,14 @@
                     <span class="slider"></span>
                 </label>
             </div>
+            {% endif %}
         </div>
 
         <div class="form-buttons">
             <button type="submit" class="submit-button">Record Section</button>
             <button type="button" class="cancel-button" onclick="window.history.back()">Cancel</button>
         </div>
+        {% endif %}
     </form>
 </div>
 {% endblock %}

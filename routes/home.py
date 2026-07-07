@@ -163,12 +163,31 @@ def register_home_routes(app):
             if day_data:
                 kid_name = unquote(kid_name)
                 section_name = unquote(section_name)
+
+                all_sections = get_completed_sections()
+                prior = [s for s in all_sections
+                         if s.get(NAME, '').lower() == kid_name.lower()
+                         and str(s.get(SECTION, '')) == str(section_name)]
+
+                history = {'main_date': None, 'silver_date': None, 'gold_date': None}
+                for record in prior:
+                    if str(record.get(SECTION_COMPLETE, '')).lower() in ['true', 'yes', '1']:
+                        if not history['main_date']:
+                            history['main_date'] = record.get(DATE, '')
+                    if str(record.get(SILVER_CREDIT, '')).lower() in ['true', 'yes', '1']:
+                        if not history['silver_date']:
+                            history['silver_date'] = record.get(DATE, '')
+                    if str(record.get(GOLD_CREDIT, '')).lower() in ['true', 'yes', '1']:
+                        if not history['gold_date']:
+                            history['gold_date'] = record.get(DATE, '')
+
                 return render_template('record_section_form.html',
                                      day_data=day_data,
                                      date_str=date_str,
                                      team_name=team_name,
                                      kid_name=kid_name,
-                                     section_name=section_name)
+                                     section_name=section_name,
+                                     history=history)
             else:
                 return redirect(url_for('home'))
         except Exception as e:
