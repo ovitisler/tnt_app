@@ -13,8 +13,8 @@
 <div class="schedule-list">
     {% for day in schedule_data %}
     {% set day_url = day.Date | date_to_url %}
-    <div class="schedule-item {% if day_url == closest_date_str %}current-date{% endif %}"
-         {% if day_url == closest_date_str %}id="current-date"{% endif %}
+    <div class="schedule-item"
+         {% if day_url == closest_date_str %}id="current-date" style="background: linear-gradient(135deg, #f9f0f2, #fdf6e3); border-left: 4px solid #72253D;"{% endif %}
          onclick="window.location.href='/attendance/{{ day_url }}'">
         <div class="schedule-header">
             <div class="schedule-main">
@@ -22,7 +22,7 @@
                 <p class="theme">{{ day.Theme }}</p>
             </div>
             {% if day_url == closest_date_str %}
-            <span style="font-size:0.75em; color:#5c6bc0; font-weight:600; margin-right:8px;">TODAY</span>
+            <span style="background:#72253D; color:#fff; font-size:0.85em; font-weight:700; padding:5px 12px; border-radius:14px; margin-right:8px; white-space:nowrap;">TODAY</span>
             {% endif %}
             <span class="arrow-icon">→</span>
         </div>
