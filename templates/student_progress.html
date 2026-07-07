@@ -43,13 +43,11 @@
         <div class="section-row"
              onclick="window.location.href='/progress/student/{{ student_name|urlencode }}/section/{{ item.section|urlencode }}'">
             <div style="flex:1; min-width:0;">
-                <div style="display:flex; align-items:center; gap:8px; flex-wrap:nowrap;">
-                    <span class="section-name" style="flex-shrink:0;">Section {{ item.section }}</span>
-                    <span style="font-size:0.8em; color:#888; white-space:nowrap;">
-                        Main: {% if item.main_date %}<span style="color:#4caf50;">✓ {{ item.main_date|date_to_mmdd }}</span>{% else %}—{% endif %}
-                        &nbsp;Silver: {% if item.silver_date %}✅{% else %}—{% endif %}
-                        &nbsp;Gold: {% if item.gold_date %}✅{% else %}—{% endif %}
-                    </span>
+                <span class="section-name">Section {{ item.section }}</span>
+                <div style="margin-top:3px; font-size:0.8em; color:#888; white-space:nowrap;">
+                    Main: {% if item.main_date %}<span style="color:#4caf50;">✓ {{ item.main_date|date_to_mmdd }}</span>{% else %}—{% endif %}
+                    &nbsp;Silver: {% if item.silver_date %}✅{% else %}—{% endif %}
+                    &nbsp;Gold: {% if item.gold_date %}✅{% else %}—{% endif %}
                 </div>
             </div>
             <span class="arrow-icon">→</span>
