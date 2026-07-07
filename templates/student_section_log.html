@@ -22,21 +22,12 @@
         {% for index, record in section_records %}
         <div class="section-row"
              onclick="window.location.href='/progress/student/{{ student_name|urlencode }}/record/{{ index }}'">
-            <div style="flex:1;">
+            <div style="flex:1; min-width:0;">
                 <div style="font-size: 0.9em; font-weight: 600; color: #555;">{{ record.Date|date_to_mmdd }}</div>
-                <div style="margin-top: 4px; font-size: 0.8em; display: flex; gap: 12px;">
-                    <span>
-                        {% if record.get('Section Complete')|string|lower in ['true', 'yes', '1'] %}✅{% else %}<span style="opacity:0.3;">⬜</span>{% endif %}
-                        Main
-                    </span>
-                    <span>
-                        {% if record.get('Silver Credit')|string|lower in ['true', 'yes', '1'] %}✅{% else %}<span style="opacity:0.3;">⬜</span>{% endif %}
-                        Silver
-                    </span>
-                    <span>
-                        {% if record.get('Gold Credit')|string|lower in ['true', 'yes', '1'] %}✅{% else %}<span style="opacity:0.3;">⬜</span>{% endif %}
-                        Gold
-                    </span>
+                <div style="margin-top: 4px; font-size: 0.8em; white-space: nowrap;">
+                    {% if record.get('Section Complete')|string|lower in ['true', 'yes', '1'] %}✅{% else %}<span style="opacity:0.3;">⬜</span>{% endif %} Main
+                    &nbsp;{% if record.get('Silver Credit')|string|lower in ['true', 'yes', '1'] %}✅{% else %}<span style="opacity:0.3;">⬜</span>{% endif %} Silver
+                    &nbsp;{% if record.get('Gold Credit')|string|lower in ['true', 'yes', '1'] %}✅{% else %}<span style="opacity:0.3;">⬜</span>{% endif %} Gold
                 </div>
             </div>
             <span style="font-size: 0.8em; color: #999;">Edit →</span>

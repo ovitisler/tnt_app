@@ -17,13 +17,15 @@
         {% for item in sections %}
         <div class="section-row"
              onclick="window.location.href='/home/{{ date_str }}/team/{{ team_name }}/record_section/kid/{{ kid_name|urlencode }}/section/{{ item.section|urlencode }}'">
-            <div style="flex:1;">
-                <span class="section-name">{{ item.section }}</span>
-                <span style="margin-left:12px; font-size:0.8em; color:#888;">
-                    Main: {% if item.main_date %}<span style="color:#4caf50;">✓ {{ item.main_date|date_to_mmdd }}</span>{% else %}—{% endif %}
-                    &nbsp;Silver: {% if item.silver %}✅{% else %}—{% endif %}
-                    &nbsp;Gold: {% if item.gold %}✅{% else %}—{% endif %}
-                </span>
+            <div style="flex:1; min-width:0;">
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:nowrap;">
+                    <span class="section-name" style="flex-shrink:0;">{{ item.section }}</span>
+                    <span style="font-size:0.8em; color:#888; white-space:nowrap;">
+                        Main: {% if item.main_date %}<span style="color:#4caf50;">✓ {{ item.main_date|date_to_mmdd }}</span>{% else %}—{% endif %}
+                        &nbsp;Silver: {% if item.silver %}✅{% else %}—{% endif %}
+                        &nbsp;Gold: {% if item.gold %}✅{% else %}—{% endif %}
+                    </span>
+                </div>
             </div>
             <span class="arrow-icon">→</span>
         </div>
