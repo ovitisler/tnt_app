@@ -13,7 +13,7 @@ from models.fields import (
     NAME, TEAM, DATE, GROUP,
     PRESENT, HAS_BIBLE, WEARING_SHIRT, HAS_BOOK, DID_HOMEWORK, HAS_DUES,
 )
-from models.utils import dates_match, find_day_by_date, url_to_date
+from models.utils import dates_match, find_day_by_date, url_to_date, find_closest_date_url
 
 
 def register_attendance_routes(app):
@@ -23,7 +23,8 @@ def register_attendance_routes(app):
     def attendance():
         try:
             schedule_data = get_attendance_schedule()
-            return render_template('attendance.html', schedule_data=schedule_data)
+            closest = find_closest_date_url(schedule_data)
+            return render_template('attendance.html', schedule_data=schedule_data, closest_date_str=closest)
         except Exception as e:
             return render_template('attendance.html', schedule_data=[], error=str(e))
 

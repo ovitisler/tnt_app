@@ -1,4 +1,31 @@
-from datetime import datetime
+from datetime import datetime, date
+
+def get_today():
+    """Return today's date, respecting DATE_OVERRIDE in test_mode if set."""
+    from models.test_mode import DATE_OVERRIDE
+    if DATE_OVERRIDE:
+        return datetime.strptime(DATE_OVERRIDE, '%Y-%m-%d').date()
+    return date.today()
+
+
+def find_closest_date_url(schedule_data):
+    """Return the date_to_url value for the closest upcoming date in the schedule."""
+    today = get_today()
+    fallback = None
+    for day in schedule_data:
+        raw = day.get('Date', '')
+        if not raw:
+            continue
+        try:
+            d = parse_date_string(raw)
+            url = date_to_url(raw)
+            fallback = url
+            if d >= today:
+                return url
+        except Exception:
+            continue
+    return fallback
+
 
 def find_column_index(worksheet, header_name):
     """Find the index of a column by its header name"""

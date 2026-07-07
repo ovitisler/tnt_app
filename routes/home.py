@@ -16,7 +16,7 @@ from models.data import (
     upsert_completed_section,
     update_completed_section,
 )
-from models.utils import dates_match, find_day_by_date, url_to_date
+from models.utils import dates_match, find_day_by_date, url_to_date, find_closest_date_url
 
 
 def register_home_routes(app):
@@ -26,7 +26,8 @@ def register_home_routes(app):
     def home():
         try:
             schedule_data = get_schedule()
-            return render_template('home.html', schedule_data=schedule_data)
+            closest = find_closest_date_url(schedule_data)
+            return render_template('home.html', schedule_data=schedule_data, closest_date_str=closest)
         except Exception as e:
             return render_template('home.html', schedule_data=[], error=str(e))
 

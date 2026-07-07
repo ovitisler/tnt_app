@@ -12,12 +12,18 @@
 {% elif schedule_data %}
 <div class="schedule-list">
     {% for day in schedule_data %}
-    <div class="schedule-item" onclick="window.location.href='/attendance/{{ day.Date | date_to_url }}'">
+    {% set day_url = day.Date | date_to_url %}
+    <div class="schedule-item {% if day_url == closest_date_str %}current-date{% endif %}"
+         {% if day_url == closest_date_str %}id="current-date"{% endif %}
+         onclick="window.location.href='/attendance/{{ day_url }}'">
         <div class="schedule-header">
             <div class="schedule-main">
                 <h3>{{ day.Date }}</h3>
                 <p class="theme">{{ day.Theme }}</p>
             </div>
+            {% if day_url == closest_date_str %}
+            <span style="font-size:0.75em; color:#5c6bc0; font-weight:600; margin-right:8px;">TODAY</span>
+            {% endif %}
             <span class="arrow-icon">→</span>
         </div>
     </div>
@@ -29,4 +35,13 @@
     <p>No attendance schedule found in the Google Sheet.</p>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+window.addEventListener('load', () => {
+    const el = document.getElementById('current-date');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+</script>
 {% endblock %}
