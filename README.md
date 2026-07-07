@@ -12,7 +12,7 @@ A Flask web application to track reading teams and their progress.
 
 1. Clone the repository:
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/ovitisler/tnt_app.git
 cd tnt
 ```
 
