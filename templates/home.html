@@ -41,7 +41,10 @@
 <script>
 window.addEventListener('load', () => {
     const el = document.getElementById('current-date');
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (el) {
+        const top = el.getBoundingClientRect().top + window.scrollY - 80;
+        window.scrollTo({ top, behavior: 'smooth' });
+    }
 });
 </script>
 {% endblock %}
