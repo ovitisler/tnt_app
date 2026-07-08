@@ -65,17 +65,26 @@ def register_attendance_routes(app):
                                 and row.get(TEAM, '').lower() == team_name.lower()), None)
 
                 all_entries = get_attendance_entries()
+                checked_in = {
+                    entry.get(NAME, '').lower(): entry
+                    for entry in all_entries
+                    if dates_match(entry.get(DATE), day_data.get(DATE))
+                    and entry.get(TEAM, '').lower() == team_name.lower()
+                }
 
-                checked_in_kids = [entry for entry in all_entries
-                                 if dates_match(entry.get(DATE), day_data.get(DATE))
-                                 and entry.get(TEAM, '').lower() == team_name.lower()]
+                roster_data = get_roster()
+                team_kids = [row[NAME] for row in roster_data if row.get(GROUP, '').lower() == team_name.lower()]
+                kids_with_status = [
+                    {'name': kid, 'entry': checked_in.get(kid.lower())}
+                    for kid in team_kids
+                ]
 
                 return render_template('team_attendance_details.html',
                                      day_data=day_data,
                                      date_str=date_str,
                                      team_data=team_data,
                                      team_name=team_name,
-                                     checked_in_kids=checked_in_kids)
+                                     kids_with_status=kids_with_status)
             else:
                 return redirect(url_for('attendance'))
         except Exception as e:
@@ -105,6 +114,25 @@ def register_attendance_routes(app):
                                      team_name=team_name,
                                      kid_name=kid_name,
                                      kid_entry=kid_entry)
+            else:
+                return redirect(url_for('attendance'))
+        except Exception as e:
+            return redirect(url_for('attendance'))
+
+    @app.route('/attendance/<date_str>/team/<team_name>/checkin/<path:kid_name>')
+    def checkin_form_for_kid(date_str, team_name, kid_name):
+        try:
+            schedule_data = get_attendance_schedule()
+            display_date = url_to_date(date_str)
+            day_data = find_day_by_date(schedule_data, display_date)
+
+            if day_data:
+                kid_name = unquote(kid_name)
+                return render_template('checkin_form.html',
+                                     day_data=day_data,
+                                     date_str=date_str,
+                                     team_name=team_name,
+                                     kid_name=kid_name)
             else:
                 return redirect(url_for('attendance'))
         except Exception as e:

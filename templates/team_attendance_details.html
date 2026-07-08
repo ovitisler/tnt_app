@@ -5,70 +5,54 @@
 
 {% block title %}TNT Reading Teams Tracker - {{ team_name }} Team{% endblock %}
 
-{% block content %}
-<a href="/attendance/{{ date_str }}" class="back-button">
-    ← Back to {{ day_data.Date }}
-</a>
+{% macro chip(label, value) %}
+{% if value and value|string|lower in ['true', 'yes', '1', 'present'] %}
+<span style="background:#e8f5e9; color:#2e7d32; font-size:0.68em; font-weight:600; padding:2px 7px; border-radius:8px; white-space:nowrap;">{{ label }}</span>
+{% else %}
+<span style="background:#f0f0f0; color:#bbb; font-size:0.68em; padding:2px 7px; border-radius:8px; white-space:nowrap;">{{ label }}</span>
+{% endif %}
+{% endmacro %}
 
+{% block content %}
 <div class="page-header">
     <div class="team-badge {{ team_name|lower }}">{{ team_name }} Team</div>
     <h1>{{ day_data.Date }}</h1>
     <p class="subtitle">{{ day_data.Theme }}</p>
 </div>
 
-<button class="check-in-button" onclick="window.location.href='/attendance/{{ date_str }}/team/{{ team_name }}/checkin'">
-    Check a Kid in
-</button>
-
-{% if team_data %}
-<div class="team-stats">
-    <div class="stats-grid">
-        <div class="stat-item">
-            <span class="stat-label">Date</span>
-            <span class="stat-value">{{ day_data.Date }}</span>
-        </div>
-        <div class="stat-item">
-            <span class="stat-label">Team</span>
-            <span class="stat-value">{{ team_name }} Team</span>
-        </div>
-        <div class="stat-item">
-            <span class="stat-label">Kids Present</span>
-            <span class="stat-value">{{ team_data.get('Kids Present', 0) }}</span>
-        </div>
-        <div class="stat-item">
-            <span class="stat-label">Attendance Points</span>
-            <span class="stat-value">{{ team_data.get('Attendance Points', 0) }}</span>
-        </div>
-        <div class="stat-item">
-            <span class="stat-label">Points per Kid</span>
-            <span class="stat-value">{{ team_data.get('Points per Kid', 0) }}</span>
-        </div>
-    </div>
-</div>
 
 <div class="kids-list">
-    <h3>Checked-in Kids</h3>
-    {% if checked_in_kids %}
+    <h3>Attendance</h3>
     <div class="kids-grid">
-        {% for kid in checked_in_kids %}
-        <div class="kid-item">
-            <div class="section-row" onclick="window.location.href='/attendance/{{ date_str }}/team/{{ team_name }}/kid/{{ kid.Name }}'">
-                <span class="section-name">{{ kid.Name }}</span>
-                <span class="arrow-icon">→</span>
+        {% for kid in kids_with_status %}
+        {% set entry = kid.entry %}
+        {% if entry %}
+        <div class="section-row"
+             onclick="window.location.href='/attendance/{{ date_str }}/team/{{ team_name }}/kid/{{ kid.name|urlencode }}'">
+            <div style="flex:1; min-width:0;">
+                <span class="section-name">{{ kid.name }}</span>
+                <div style="margin-top:6px; display:flex; gap:4px; flex-wrap:nowrap; overflow:hidden;">
+                    {{ chip('Here', entry.get('Present')) }}
+                    {{ chip('Bible', entry.get('Has Bible')) }}
+                    {{ chip('Shirt', entry.get('Wearing Shirt?')) }}
+                    {{ chip('Book', entry.get('Has Book?')) }}
+                    {{ chip('HW', entry.get('Did Homework?')) }}
+                    {{ chip('Dues', entry.get('Has Dues?')) }}
+                </div>
             </div>
+            <span class="arrow-icon">→</span>
         </div>
+        {% else %}
+        <div class="section-row" style="border-style:dashed; border-color:#ccc;"
+             onclick="window.location.href='/attendance/{{ date_str }}/team/{{ team_name }}/checkin/{{ kid.name|urlencode }}'">
+            <div style="flex:1; min-width:0;">
+                <span class="section-name">{{ kid.name }}</span>
+                <div style="margin-top:4px; font-size:0.78em; color:#999;">Tap to check in</div>
+            </div>
+            <span class="arrow-icon">→</span>
+        </div>
+        {% endif %}
         {% endfor %}
     </div>
-    {% else %}
-    <div class="no-kids">
-        <p>No kids checked in for this date and team.</p>
-    </div>
-    {% endif %}
 </div>
-{% else %}
-<div class="content-section">
-    <h2>No Data Found</h2>
-    <p>No attendance data found for {{ team_name }} team on {{ day_data.Date }}.</p>
-</div>
-{% endif %}
 {% endblock %}

@@ -15,26 +15,26 @@
     <form id="checkinForm" method="POST" action="/submit_checkin">
         <input type="hidden" name="team" value="{{ team_name }}">
         <input type="hidden" name="date_str" value="{{ date_str }}">
+        <input type="hidden" name="date" value="{{ day_data.Date }}">
 
         <div class="form-group">
-            <label for="name">Name:</label>
+            <label>Student</label>
+            {% if kid_name %}
+            <input type="hidden" name="name" value="{{ kid_name }}">
+            <div style="padding: 10px; background: #f5f5f5; border-radius: 8px; color: #666;">{{ kid_name }}</div>
+            {% else %}
             <select name="name" id="name" required>
                 <option value="">Select a kid...</option>
                 {% for kid in team_kids %}
                 <option value="{{ kid }}">{{ kid }}</option>
                 {% endfor %}
             </select>
+            {% endif %}
         </div>
 
         <div class="form-group">
-            <label for="date">Date:</label>
-            <select name="date" id="date" required>
-                {% for schedule_item in schedule_data %}
-                <option value="{{ schedule_item.Date }}" {% if schedule_item.Date == day_data.Date %}selected{% endif %}>
-                    {{ schedule_item.Date }}
-                </option>
-                {% endfor %}
-            </select>
+            <label>Date</label>
+            <div style="padding: 10px; background: #f5f5f5; border-radius: 8px; color: #666;">{{ day_data.Date }}</div>
         </div>
 
         <div class="form-group">
@@ -45,7 +45,6 @@
                     <span class="slider"></span>
                 </label>
             </div>
-
             <div class="toggle-group">
                 <span class="toggle-label">Has Bible</span>
                 <label class="toggle-switch">
@@ -53,7 +52,6 @@
                     <span class="slider"></span>
                 </label>
             </div>
-
             <div class="toggle-group">
                 <span class="toggle-label">Wearing Shirt?</span>
                 <label class="toggle-switch">
@@ -61,7 +59,6 @@
                     <span class="slider"></span>
                 </label>
             </div>
-
             <div class="toggle-group">
                 <span class="toggle-label">Has Book?</span>
                 <label class="toggle-switch">
@@ -69,7 +66,6 @@
                     <span class="slider"></span>
                 </label>
             </div>
-
             <div class="toggle-group">
                 <span class="toggle-label">Did Homework?</span>
                 <label class="toggle-switch">
@@ -77,7 +73,6 @@
                     <span class="slider"></span>
                 </label>
             </div>
-
             <div class="toggle-group">
                 <span class="toggle-label">Has Dues</span>
                 <label class="toggle-switch">
@@ -106,7 +101,6 @@ document.getElementById('checkinForm').addEventListener('submit', function(event
         redirect: 'follow'
     }).then(response => {
         if (response.ok || response.redirected) {
-            // Navigate to team page with fresh request (not cached history)
             window.location.href = '/attendance/{{ date_str }}/team/{{ team_name }}';
         } else {
             alert('Error submitting check-in');
