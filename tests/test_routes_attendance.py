@@ -92,10 +92,11 @@ class TestTeamAttendanceDetailsRoutes(unittest.TestCase):
         app.config['TESTING'] = True
         self.client = app.test_client()
 
+    @patch('routes.attendance.get_roster')
     @patch('routes.attendance.get_attendance_entries')
     @patch('routes.attendance.get_attendance_totals')
     @patch('routes.attendance.get_attendance_schedule')
-    def test_team_attendance_shows_team_data(self, mock_get_schedule, mock_get_totals, mock_get_entries):
+    def test_team_attendance_shows_team_data(self, mock_get_schedule, mock_get_totals, mock_get_entries, mock_get_roster):
         """GET /attendance/<date>/team/<team> should show team attendance"""
         mock_get_schedule.return_value = [
             {'Date': 'January 15, 2025', 'Theme': 'Test'}
@@ -105,6 +106,9 @@ class TestTeamAttendanceDetailsRoutes(unittest.TestCase):
         ]
         mock_get_entries.return_value = [
             {'Date': 'January 15, 2025', 'Team': 'Red', 'Name': 'Alice', 'Present': True}
+        ]
+        mock_get_roster.return_value = [
+            {'Name': 'Alice', 'Group': 'Red'}
         ]
 
         response = self.client.get('/attendance/2025-01-15/team/Red')

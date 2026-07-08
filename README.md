@@ -49,6 +49,13 @@ The following environment variables need to be set:
 - `GOOGLE_SHEETS_CREDS`: The contents of your client_secret.json file (for production)
 - `SHEET_NAME`: The name of your Google Sheet (default: 'TNT_App_Data')
 
+## Testing
+
+```bash
+source .venv/bin/activate
+pytest tests/ -q
+```
+
 ## Deployment
 This application is configured for deployment on Render. See deployment instructions in DEPLOYMENT.md.
 

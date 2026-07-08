@@ -182,7 +182,7 @@ class TestSubmitSectionRoutes(unittest.TestCase):
         app.config['TESTING'] = True
         self.client = app.test_client()
 
-    @patch('routes.home.insert_completed_section')
+    @patch('routes.home.upsert_completed_section')
     def test_submit_section_inserts_record(self, mock_insert):
         """POST /submit_section should insert a record"""
         response = self.client.post('/submit_section', data={
@@ -196,7 +196,7 @@ class TestSubmitSectionRoutes(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
         mock_insert.assert_called_once()
 
-    @patch('routes.home.insert_completed_section')
+    @patch('routes.home.upsert_completed_section')
     def test_submit_section_passes_correct_data(self, mock_insert):
         """POST /submit_section should pass correct data to insert"""
         self.client.post('/submit_section', data={
@@ -212,7 +212,7 @@ class TestSubmitSectionRoutes(unittest.TestCase):
         self.assertEqual(call_args[0][0]['Team'], 'Red')
         self.assertEqual(call_args[0][0]['Section'], '1.1')
 
-    @patch('routes.home.insert_completed_section')
+    @patch('routes.home.upsert_completed_section')
     def test_submit_section_redirects_to_team_page(self, mock_insert):
         """POST /submit_section should redirect to team page"""
         response = self.client.post('/submit_section', data={
@@ -226,7 +226,7 @@ class TestSubmitSectionRoutes(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn('/home/2025-01-15/team/Red', response.location)
 
-    @patch('routes.home.insert_completed_section')
+    @patch('routes.home.upsert_completed_section')
     def test_submit_section_handles_error(self, mock_insert):
         """POST /submit_section should redirect on error"""
         mock_insert.side_effect = Exception('Error')

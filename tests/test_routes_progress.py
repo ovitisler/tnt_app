@@ -150,7 +150,7 @@ class TestStudentSectionDetailsRoutes(unittest.TestCase):
             {'Name': 'Alice', 'Section': '1.1', 'Silver Credit': 'TRUE'},
         ]
 
-        response = self.client.get('/progress/student/Alice/section/5')
+        response = self.client.get('/progress/student/Alice/record/5')
 
         self.assertEqual(response.status_code, 302)
 
@@ -227,7 +227,7 @@ class TestEditProgressSectionRoutes(unittest.TestCase):
         })
 
         self.assertEqual(response.status_code, 302)
-        self.assertIn('/progress/student/Alice/section/0', response.location)
+        self.assertIn('/progress/student/Alice/record/0', response.location)
 
     @patch('routes.progress.get_completed_sections')
     def test_edit_progress_section_handles_invalid_index(self, mock_get_sections):
