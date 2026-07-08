@@ -567,6 +567,7 @@ input:checked + .slider:before {
 }
 
 .cancel-button {
+    flex: 1;
     background: var(--color-gray-medium);
     color: white;
     padding: var(--spacing-sm) var(--spacing-lg);
@@ -602,6 +603,7 @@ input:checked + .slider:before {
     border-radius: 12px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.1);
     padding: 40px;
+    padding-bottom: 100px;
     width: 100%;
     max-width: 500px;
 }
@@ -657,7 +659,15 @@ input:checked + .slider:before {
 .form-buttons {
     display: flex;
     gap: 15px;
-    margin-top: 30px;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 16px 20px;
+    background: white;
+    border-top: 1px solid #e0e0e0;
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
+    z-index: 100;
 }
 
 /* Placeholder content */
