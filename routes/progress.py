@@ -16,7 +16,35 @@ def register_progress_routes(app):
     def progress():
         try:
             roster_data = get_roster()
-            return render_template('progress.html', students=roster_data)
+            all_sections = get_completed_sections()
+
+            stats_by_kid = {}
+            for record in all_sections:
+                name = record.get(NAME, '').strip()
+                if not name:
+                    continue
+                if name not in stats_by_kid:
+                    stats_by_kid[name] = {'sections': set(), 'silver': set(), 'gold': set()}
+                sec = record.get(SECTION, '')
+                if str(record.get(SECTION_COMPLETE, '')).lower() in ['true', 'yes', '1']:
+                    stats_by_kid[name]['sections'].add(sec)
+                if str(record.get(SILVER_CREDIT, '')).lower() in ['true', 'yes', '1']:
+                    stats_by_kid[name]['silver'].add(sec)
+                if str(record.get(GOLD_CREDIT, '')).lower() in ['true', 'yes', '1']:
+                    stats_by_kid[name]['gold'].add(sec)
+
+            students = []
+            for s in roster_data:
+                name = s.get(NAME, '')
+                kid_stats = stats_by_kid.get(name, {})
+                students.append({
+                    **s,
+                    'total_sections': len(kid_stats.get('sections', set())),
+                    'total_silver': len(kid_stats.get('silver', set())),
+                    'total_gold': len(kid_stats.get('gold', set())),
+                })
+
+            return render_template('progress.html', students=students)
         except Exception as e:
             return render_template('progress.html', students=[], error=str(e))
 
