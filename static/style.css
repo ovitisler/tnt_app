@@ -865,6 +865,13 @@ input:checked + .slider:before {
     transform: translateX(2px);
 }
 
+.section-row:active {
+    background: #d0e6f7;
+    border-color: #a0c8ed;
+    transform: scale(0.98);
+    transition: all 0.08s ease;
+}
+
 .section-row:hover .section-name {
     color: white;
 }
