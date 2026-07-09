@@ -94,6 +94,15 @@ def date_to_mmdd(date_str):
     except:
         return str(date_str)
 
+def date_to_long(date_str):
+    """Convert any date string to 'November 5th' style"""
+    try:
+        d = parse_date_string(str(date_str))
+        suffix = {1:'st',2:'nd',3:'rd'}.get(d.day % 20, 'th') if d.day not in (11,12,13) else 'th'
+        return d.strftime('%B ') + str(d.day) + suffix
+    except:
+        return str(date_str)
+
 def url_to_date(url_date):
     """Convert URL date (YYYY-MM-DD) back to display format"""
     try:

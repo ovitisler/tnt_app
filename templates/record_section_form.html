@@ -21,7 +21,7 @@
         <div style="border-left:4px solid var(--color-primary); padding:10px 14px; margin-bottom:20px;">
             <div style="font-size:1.05em; font-weight:700; color:#333;">{{ kid_name }}</div>
             <div style="font-size:0.85em; color:#555; margin-top:4px;">Section {{ section_name }}</div>
-            <div style="font-size:0.78em; color:#aaa; margin-top:2px;">{{ day_data.Date|date_to_mmdd }}</div>
+            <div style="font-size:0.82em; color:#888; margin-top:2px;">{{ day_data.Date|date_to_long }}</div>
         </div>
 
         {% if history.main_date or history.silver_date or history.gold_date %}
