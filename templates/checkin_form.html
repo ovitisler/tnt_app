@@ -7,9 +7,8 @@
 
 {% block content %}
 <div class="form-container">
-    <div class="form-header">
+    <div class="form-header" style="margin-bottom:16px;">
         <div class="team-badge {{ team_name|lower }}">{{ team_name }} Team</div>
-        <h1>Check In Kid</h1>
     </div>
 
     <form id="checkinForm" method="POST" action="/submit_checkin">
@@ -17,25 +16,26 @@
         <input type="hidden" name="date_str" value="{{ date_str }}">
         <input type="hidden" name="date" value="{{ day_data.Date }}">
 
+        {% if kid_name %}
+        <input type="hidden" name="name" value="{{ kid_name }}">
+        <div style="border-left:4px solid var(--color-primary); padding:10px 14px; margin-bottom:20px;">
+            <div style="font-size:1.05em; font-weight:700; color:#333;">{{ kid_name }}</div>
+            <div style="font-size:0.78em; color:#aaa; margin-top:2px;">{{ day_data.Date|date_to_mmdd }}</div>
+        </div>
+        {% else %}
         <div class="form-group">
             <label>Student</label>
-            {% if kid_name %}
-            <input type="hidden" name="name" value="{{ kid_name }}">
-            <div style="padding: 10px; background: #f5f5f5; border-radius: 8px; color: #666;">{{ kid_name }}</div>
-            {% else %}
             <select name="name" id="name" required>
                 <option value="">Select a kid...</option>
                 {% for kid in team_kids %}
                 <option value="{{ kid }}">{{ kid }}</option>
                 {% endfor %}
             </select>
-            {% endif %}
         </div>
-
-        <div class="form-group">
-            <label>Date</label>
-            <div style="padding: 10px; background: #f5f5f5; border-radius: 8px; color: #666;">{{ day_data.Date }}</div>
+        <div style="border-left:4px solid var(--color-primary); padding:10px 14px; margin-bottom:20px;">
+            <div style="font-size:0.78em; color:#aaa;">{{ day_data.Date|date_to_mmdd }}</div>
         </div>
+        {% endif %}
 
         <div class="form-group">
             <div class="toggle-group">
