@@ -133,7 +133,7 @@ body {
 
 .main-content {
     padding: var(--spacing-sm);
-    padding-bottom: 80px;
+    padding-bottom: calc(100px + env(safe-area-inset-bottom));
     margin: 0 auto;
     max-width: 600px;
 }
