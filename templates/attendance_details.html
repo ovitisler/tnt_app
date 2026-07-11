@@ -15,18 +15,6 @@
     <p class="subtitle">{{ day_data.Theme }}</p>
 </div>
 
-<div class="details-container">
-    <div class="details-grid">
-        {% for key, value in day_data.items() %}
-        {% if key not in ['Date', 'Theme'] and value %}
-        <div class="detail-item">
-            <strong>{{ key }}</strong>
-            <span>{{ value }}</span>
-        </div>
-        {% endif %}
-        {% endfor %}
-    </div>
-</div>
 
 <div class="attendance-section">
     <h2>Weekly Attendance Totals</h2>

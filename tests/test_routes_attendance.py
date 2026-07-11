@@ -19,7 +19,7 @@ class TestAttendanceRoutes(unittest.TestCase):
         app.config['TESTING'] = True
         self.client = app.test_client()
 
-    @patch('routes.attendance.get_attendance_schedule')
+    @patch('routes.attendance.get_schedule')
     def test_attendance_returns_schedule_data(self, mock_get_schedule):
         """GET /attendance should return attendance schedule data"""
         mock_get_schedule.return_value = [
@@ -31,7 +31,7 @@ class TestAttendanceRoutes(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         mock_get_schedule.assert_called_once()
 
-    @patch('routes.attendance.get_attendance_schedule')
+    @patch('routes.attendance.get_schedule')
     def test_attendance_handles_error(self, mock_get_schedule):
         """GET /attendance should handle errors gracefully"""
         mock_get_schedule.side_effect = Exception('Sheet not found')
@@ -50,7 +50,7 @@ class TestAttendanceDetailsRoutes(unittest.TestCase):
         self.client = app.test_client()
 
     @patch('routes.attendance.get_attendance_totals')
-    @patch('routes.attendance.get_attendance_schedule')
+    @patch('routes.attendance.get_schedule')
     def test_attendance_details_shows_day_data(self, mock_get_schedule, mock_get_totals):
         """GET /attendance/<date_str> should show day details"""
         mock_get_schedule.return_value = [
@@ -64,7 +64,7 @@ class TestAttendanceDetailsRoutes(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
 
-    @patch('routes.attendance.get_attendance_schedule')
+    @patch('routes.attendance.get_schedule')
     def test_attendance_details_redirects_if_date_not_found(self, mock_get_schedule):
         """GET /attendance/<date_str> should redirect if date not in schedule"""
         mock_get_schedule.return_value = [
@@ -75,7 +75,7 @@ class TestAttendanceDetailsRoutes(unittest.TestCase):
 
         self.assertEqual(response.status_code, 302)
 
-    @patch('routes.attendance.get_attendance_schedule')
+    @patch('routes.attendance.get_schedule')
     def test_attendance_details_handles_error(self, mock_get_schedule):
         """GET /attendance/<date_str> should redirect on error"""
         mock_get_schedule.side_effect = Exception('Error')
@@ -95,7 +95,7 @@ class TestTeamAttendanceDetailsRoutes(unittest.TestCase):
     @patch('routes.attendance.get_roster')
     @patch('routes.attendance.get_attendance_entries')
     @patch('routes.attendance.get_attendance_totals')
-    @patch('routes.attendance.get_attendance_schedule')
+    @patch('routes.attendance.get_schedule')
     def test_team_attendance_shows_team_data(self, mock_get_schedule, mock_get_totals, mock_get_entries, mock_get_roster):
         """GET /attendance/<date>/team/<team> should show team attendance"""
         mock_get_schedule.return_value = [
@@ -115,7 +115,7 @@ class TestTeamAttendanceDetailsRoutes(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
 
-    @patch('routes.attendance.get_attendance_schedule')
+    @patch('routes.attendance.get_schedule')
     def test_team_attendance_redirects_if_date_not_found(self, mock_get_schedule):
         """Should redirect if date not in schedule"""
         mock_get_schedule.return_value = []
@@ -133,7 +133,7 @@ class TestKidAttendanceDetailsRoutes(unittest.TestCase):
         self.client = app.test_client()
 
     @patch('routes.attendance.get_attendance_entries')
-    @patch('routes.attendance.get_attendance_schedule')
+    @patch('routes.attendance.get_schedule')
     def test_kid_attendance_shows_entry(self, mock_get_schedule, mock_get_entries):
         """GET /attendance/<date>/team/<team>/kid/<kid> should show kid entry"""
         mock_get_schedule.return_value = [
@@ -148,7 +148,7 @@ class TestKidAttendanceDetailsRoutes(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
 
     @patch('routes.attendance.get_attendance_entries')
-    @patch('routes.attendance.get_attendance_schedule')
+    @patch('routes.attendance.get_schedule')
     def test_kid_attendance_handles_url_encoding(self, mock_get_schedule, mock_get_entries):
         """Should handle URL-encoded kid names"""
         mock_get_schedule.return_value = [
@@ -171,7 +171,7 @@ class TestCheckinFormRoutes(unittest.TestCase):
         self.client = app.test_client()
 
     @patch('routes.attendance.get_roster')
-    @patch('routes.attendance.get_attendance_schedule')
+    @patch('routes.attendance.get_schedule')
     def test_checkin_form_shows_team_kids(self, mock_get_schedule, mock_get_roster):
         """GET /attendance/<date>/team/<team>/checkin should show form with team kids"""
         mock_get_schedule.return_value = [
@@ -186,7 +186,7 @@ class TestCheckinFormRoutes(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
 
-    @patch('routes.attendance.get_attendance_schedule')
+    @patch('routes.attendance.get_schedule')
     def test_checkin_form_redirects_if_date_not_found(self, mock_get_schedule):
         """Should redirect if date not in schedule"""
         mock_get_schedule.return_value = []
@@ -274,7 +274,7 @@ class TestEditAttendanceRoutes(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
 
     @patch('routes.attendance.update_attendance_entry')
-    @patch('routes.attendance.get_attendance_schedule')
+    @patch('routes.attendance.get_schedule')
     def test_edit_attendance_calls_update_record(self, mock_get_schedule, mock_update):
         """POST /edit_attendance should call update"""
         mock_get_schedule.return_value = [{'Date': 'January 15, 2025', 'Theme': 'Test'}]
@@ -290,7 +290,7 @@ class TestEditAttendanceRoutes(unittest.TestCase):
         mock_update.assert_called_once()
 
     @patch('routes.attendance.update_attendance_entry')
-    @patch('routes.attendance.get_attendance_schedule')
+    @patch('routes.attendance.get_schedule')
     def test_edit_attendance_passes_correct_updates(self, mock_get_schedule, mock_update):
         """POST /edit_attendance should pass correct updates"""
         mock_get_schedule.return_value = [{'Date': 'January 15, 2025', 'Theme': 'Test'}]

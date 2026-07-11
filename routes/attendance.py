@@ -2,7 +2,7 @@ from flask import render_template, request, redirect, url_for
 from urllib.parse import unquote
 
 from models.data import (
-    get_attendance_schedule,
+    get_schedule,
     get_attendance_totals,
     get_attendance_entries,
     get_roster,
@@ -22,7 +22,7 @@ def register_attendance_routes(app):
     @app.route('/attendance')
     def attendance():
         try:
-            schedule_data = get_attendance_schedule()
+            schedule_data = get_schedule()
             closest = find_closest_date_url(schedule_data)
             return render_template('attendance.html', schedule_data=schedule_data, closest_date_str=closest)
         except Exception as e:
@@ -31,7 +31,7 @@ def register_attendance_routes(app):
     @app.route('/attendance/<date_str>')
     def attendance_details(date_str):
         try:
-            schedule_data = get_attendance_schedule()
+            schedule_data = get_schedule()
 
             display_date = url_to_date(date_str)
             day_data = find_day_by_date(schedule_data, display_date)
@@ -52,7 +52,7 @@ def register_attendance_routes(app):
     @app.route('/attendance/<date_str>/team/<team_name>')
     def team_attendance_details(date_str, team_name):
         try:
-            schedule_data = get_attendance_schedule()
+            schedule_data = get_schedule()
 
             display_date = url_to_date(date_str)
             day_data = find_day_by_date(schedule_data, display_date)
@@ -93,7 +93,7 @@ def register_attendance_routes(app):
     @app.route('/attendance/<date_str>/team/<team_name>/kid/<path:kid_name>')
     def kid_attendance_details(date_str, team_name, kid_name):
         try:
-            schedule_data = get_attendance_schedule()
+            schedule_data = get_schedule()
 
             display_date = url_to_date(date_str)
             day_data = find_day_by_date(schedule_data, display_date)
@@ -122,7 +122,7 @@ def register_attendance_routes(app):
     @app.route('/attendance/<date_str>/team/<team_name>/checkin/<path:kid_name>')
     def checkin_form_for_kid(date_str, team_name, kid_name):
         try:
-            schedule_data = get_attendance_schedule()
+            schedule_data = get_schedule()
             display_date = url_to_date(date_str)
             day_data = find_day_by_date(schedule_data, display_date)
 
@@ -141,7 +141,7 @@ def register_attendance_routes(app):
     @app.route('/attendance/<date_str>/team/<team_name>/checkin')
     def checkin_form(date_str, team_name):
         try:
-            schedule_data = get_attendance_schedule()
+            schedule_data = get_schedule()
 
             display_date = url_to_date(date_str)
             day_data = find_day_by_date(schedule_data, display_date)
@@ -193,7 +193,7 @@ def register_attendance_routes(app):
             team_name = request.form.get('team_name')
             kid_name = request.form.get('kid_name')
 
-            schedule_data = get_attendance_schedule()
+            schedule_data = get_schedule()
             display_date = url_to_date(date_str)
             day_data = find_day_by_date(schedule_data, display_date)
 
