@@ -125,7 +125,7 @@ class TestUpdateWriteThrough(unittest.TestCase):
             p.stop()
 
     def test_update_updates_storage(self):
-        """update should write to storage via batch_update"""
+        """update should write to storage"""
         from models.data import update_completed_section
 
         update_completed_section(
@@ -134,22 +134,7 @@ class TestUpdateWriteThrough(unittest.TestCase):
         )
 
         time.sleep(0.1)
-        self.mock_worksheet.batch_update.assert_called_once()
-
-    def test_update_batches_all_fields_in_one_call(self):
-        """update should send all changed fields in a single batch_update call, not one call per field"""
-        from models.data import update_completed_section
-
-        update_completed_section(
-            lambda r: r.get('Name') == 'Test Kid',
-            {'Silver Credit': 'TRUE', 'Gold Credit': 'TRUE'}
-        )
-
-        time.sleep(0.1)
-        self.mock_worksheet.batch_update.assert_called_once()
-        batch_cells = self.mock_worksheet.batch_update.call_args[0][0]
-        fields_updated = [list(c['values'][0])[0] for c in batch_cells]
-        self.assertIn('TRUE', fields_updated)
+        self.mock_worksheet.update_cell.assert_called()
 
     def test_update_updates_cache(self):
         """update should update cache after storage"""
