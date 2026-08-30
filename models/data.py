@@ -5,7 +5,7 @@ Routes should use this module for all data operations.
 import threading
 from datetime import datetime
 
-from models.fields import TIMESTAMP, NAME, DATE, SECTION
+from models.fields import TIMESTAMP, NAME, DATE, SECTION, SECTION_COMPLETE, SILVER_CREDIT, GOLD_CREDIT
 from models.sheets import (
     get_sheet_data as _get_sheet_data,
     get_worksheet as _get_worksheet,
@@ -95,7 +95,15 @@ def upsert_completed_section(data: dict) -> dict:
     )
 
     if match:
-        updates = {k: v for k, v in data.items() if k not in [NAME, DATE, SECTION, TIMESTAMP]}
+        credit_fields = {SECTION_COMPLETE, SILVER_CREDIT, GOLD_CREDIT}
+        updates = {}
+        for k, v in data.items():
+            if k in [NAME, DATE, SECTION, TIMESTAMP]:
+                continue
+            if k in credit_fields and v == 'FALSE' and str(match.get(k, '')).upper() == 'TRUE':
+                continue
+            updates[k] = v
+        updates[TIMESTAMP] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         _update_record(
             COMPLETED_SECTIONS_SHEET,
             lambda row: (

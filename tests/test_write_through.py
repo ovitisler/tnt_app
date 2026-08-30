@@ -179,5 +179,60 @@ class TestUpdateWriteThrough(unittest.TestCase):
         self.assertFalse(result)
 
 
+class TestUpsertPreservesExistingCredits(unittest.TestCase):
+    """upsert should not clear credits that were already recorded"""
+
+    def setUp(self):
+        from models.cache import CacheManager
+
+        self.cache = CacheManager()
+        self.existing_row = {
+            'Name': 'Alice',
+            'Team': 'Red',
+            'Date': 'January 15, 2025',
+            'Section': '1.1',
+            'Section Complete': 'TRUE',
+            'Silver Credit': 'FALSE',
+            'Gold Credit': 'FALSE',
+        }
+        self.cache.set('Completed Sections RAW', [self.existing_row], 100)
+
+        self.mock_worksheet = MagicMock()
+        self.mock_worksheet.get_all_records.return_value = [self.existing_row.copy()]
+
+        self.patches = [
+            patch('models.data.get_completed_sections', return_value=[self.existing_row.copy()]),
+            patch('models.data._cache', self.cache),
+            patch('models.data._get_worksheet', return_value=self.mock_worksheet),
+            patch('models.data._trigger_background_refresh'),
+        ]
+        for p in self.patches:
+            p.start()
+
+    def tearDown(self):
+        for p in self.patches:
+            p.stop()
+
+    def test_upsert_preserves_section_complete_when_adding_silver(self):
+        """Adding Silver Credit on a second upsert must not clear Section Complete"""
+        from models.data import upsert_completed_section
+
+        # Second visit: Section Complete already done (not shown as toggle),
+        # user only toggles Silver Credit. Form sends Section Complete as FALSE.
+        upsert_completed_section({
+            'Name': 'Alice',
+            'Team': 'Red',
+            'Date': 'January 15, 2025',
+            'Section': '1.1',
+            'Section Complete': 'FALSE',
+            'Silver Credit': 'TRUE',
+            'Gold Credit': 'FALSE',
+        })
+
+        row = self.cache.get('Completed Sections RAW').data[0]
+        self.assertEqual(row['Section Complete'], 'TRUE')
+        self.assertEqual(row['Silver Credit'], 'TRUE')
+
+
 if __name__ == '__main__':
     unittest.main()
