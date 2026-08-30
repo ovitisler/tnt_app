@@ -2,7 +2,6 @@
 Abstract data layer for record storage.
 Routes should use this module for all data operations.
 """
-import threading
 from datetime import datetime
 
 from models.fields import TIMESTAMP, NAME, DATE, SECTION, SECTION_COMPLETE, SILVER_CREDIT, GOLD_CREDIT
@@ -145,27 +144,21 @@ def _get_headers(table: str, worksheet):
 
 
 def _insert_record(table: str, data: dict) -> dict:
-    """Insert a new record - cache first for fast UI, then async write to Google."""
+    """Insert a new record - write to Google synchronously, then update cache."""
     if TIMESTAMP not in data:
         data[TIMESTAMP] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-    # Update cache immediately for fast UI response
+    try:
+        worksheet = _get_worksheet(table)
+        headers = _get_headers(table, worksheet)
+        row = [data.get(header, '') for header in headers]
+        worksheet.append_row(row, value_input_option='USER_ENTERED')
+        log_api_call('write', table, source='google')
+    except Exception as e:
+        print(f"[SHEETS] ❌ Write failed for '{table}': {e}")
+        return data
+
     _cache.append_row(table, data)
-
-    # Queue Google write in background
-    def background_write():
-        try:
-            worksheet = _get_worksheet(table)
-            headers = _get_headers(table, worksheet)
-            row = [data.get(header, '') for header in headers]
-            worksheet.append_row(row, value_input_option='USER_ENTERED')
-            log_api_call('write', table, source='google')
-        except Exception as e:
-            print(f"[SHEETS] ❌ Background write failed for '{table}': {e}")
-
-    thread = threading.Thread(target=background_write, daemon=True)
-    thread.start()
-
     _refresh_related_tables(table)
     return data
 

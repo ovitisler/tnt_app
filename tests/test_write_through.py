@@ -62,10 +62,9 @@ class TestInsertWriteThrough(unittest.TestCase):
 
         _trigger_background_refresh.assert_called_once_with('Completed Sections')
 
-    def test_insert_cache_first(self):
-        """insert should update cache first (sync), storage happens async"""
+    def test_insert_storage_before_cache(self):
+        """insert should write to Google before updating cache"""
         from models.data import insert_completed_section
-        import time
 
         call_order = []
 
@@ -77,12 +76,7 @@ class TestInsertWriteThrough(unittest.TestCase):
             'Team': 'Red',
         })
 
-        # Cache should be first
-        self.assertEqual(call_order[0], 'cache')
-
-        # Storage happens async - wait for background thread
-        time.sleep(0.1)
-        self.assertIn('storage', call_order)
+        self.assertEqual(call_order, ['storage', 'cache'])
 
     def test_insert_adds_timestamp(self):
         """insert should add timestamp if not present"""
