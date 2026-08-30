@@ -2,6 +2,7 @@
 Abstract data layer for record storage.
 Routes should use this module for all data operations.
 """
+import traceback
 import threading
 from datetime import datetime
 
@@ -205,6 +206,7 @@ def _update_record(table: str, match_fn, updates: dict) -> bool:
                     break
         except Exception as e:
             print(f"[SHEETS] ❌ Background write failed for '{table}': {e}")
+            traceback.print_exc()
 
     thread = threading.Thread(target=background_write, daemon=True)
     thread.start()
