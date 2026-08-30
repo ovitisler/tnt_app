@@ -171,40 +171,35 @@ def _insert_record(table: str, data: dict) -> dict:
 
 
 def _update_record(table: str, match_fn, updates: dict) -> bool:
-    """Update a record - cache first for fast UI, then async write to Google."""
+    """Update a record - write to Google synchronously, then update cache."""
     updates = {**updates, TIMESTAMP: datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-    # Update cache immediately for fast UI response
-    cache_updated = _cache.update_row(table, match_fn, updates)
 
-    if not cache_updated:
-        # No cache or record not found - can't do async, would need sync fallback
+    try:
+        worksheet = _get_worksheet(table)
+        all_records = worksheet.get_all_records()
+        headers = list(all_records[0].keys()) if all_records else worksheet.row_values(1)
+
+        found = False
+        for i, record in enumerate(all_records):
+            if match_fn(record):
+                row_num = i + 2
+                for field_name, value in updates.items():
+                    try:
+                        col_index = headers.index(field_name) + 1
+                        worksheet.update_cell(row_num, col_index, value)
+                    except ValueError:
+                        continue
+                log_api_call('write', table, source='google')
+                found = True
+                break
+    except Exception as e:
+        print(f"[SHEETS] ❌ Write failed for '{table}': {e}")
         return False
 
-    # Queue Google write in background
-    def background_write():
-        try:
-            worksheet = _get_worksheet(table)
-            all_records = worksheet.get_all_records()
-            headers = list(all_records[0].keys()) if all_records else worksheet.row_values(1)
+    if not found:
+        return False
 
-            for i, record in enumerate(all_records):
-                if match_fn(record):
-                    row_num = i + 2
-                    for field_name, value in updates.items():
-                        try:
-                            col_index = headers.index(field_name) + 1
-                            worksheet.update_cell(row_num, col_index, value)
-                        except ValueError:
-                            continue
-                    log_api_call('write', table, source='google')
-                    break
-        except Exception as e:
-            print(f"[SHEETS] ❌ Background write failed for '{table}': {e}")
-            traceback.print_exc()
-
-    thread = threading.Thread(target=background_write, daemon=True)
-    thread.start()
-
+    _cache.update_row(table, match_fn, updates)
     _refresh_related_tables(table)
     return True
 

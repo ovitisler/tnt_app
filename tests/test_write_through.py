@@ -125,7 +125,7 @@ class TestUpdateWriteThrough(unittest.TestCase):
             p.stop()
 
     def test_update_updates_storage(self):
-        """update should write to storage"""
+        """update should write to Google Sheets synchronously"""
         from models.data import update_completed_section
 
         update_completed_section(
@@ -133,7 +133,6 @@ class TestUpdateWriteThrough(unittest.TestCase):
             {'Silver Credit': 'TRUE'}
         )
 
-        time.sleep(0.1)
         self.mock_worksheet.update_cell.assert_called()
 
     def test_update_updates_cache(self):
@@ -168,10 +167,8 @@ class TestUpdateWriteThrough(unittest.TestCase):
         self.assertTrue(result)
 
     def test_update_returns_false_on_no_match(self):
-        """update should return False when no record matches in cache"""
+        """update should return False when no matching row is found in Google"""
         from models.data import update_completed_section
-
-        self.mock_cache.update_row.return_value = False
 
         result = update_completed_section(
             lambda r: r.get('Name') == 'Nonexistent',
