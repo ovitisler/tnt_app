@@ -108,7 +108,7 @@
         </div>
 
         <div class="form-buttons">
-            <button type="submit" class="submit-button">Record Section</button>
+            <button type="submit" class="submit-button">Save</button>
             <button type="button" class="cancel-button" onclick="window.history.back()">Cancel</button>
         </div>
         {% endif %}
@@ -121,6 +121,11 @@
 document.getElementById('sectionForm').addEventListener('submit', function(event) {
     event.preventDefault();
     const formData = new FormData(this);
+    const anyChecked = this.querySelectorAll('input[type="checkbox"]:checked').length > 0;
+    if (!anyChecked) {
+        alert('Please toggle at least one credit before saving.');
+        return;
+    }
     fetch('/submit_section', {
         method: 'POST',
         body: formData,
