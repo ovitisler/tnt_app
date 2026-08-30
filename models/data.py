@@ -5,6 +5,8 @@ Routes should use this module for all data operations.
 import threading
 from datetime import datetime
 
+import gspread
+
 from models.fields import TIMESTAMP, NAME, DATE, SECTION, SECTION_COMPLETE, SILVER_CREDIT, GOLD_CREDIT
 from models.sheets import (
     get_sheet_data as _get_sheet_data,
@@ -190,12 +192,15 @@ def _update_record(table: str, match_fn, updates: dict) -> bool:
             for i, record in enumerate(all_records):
                 if match_fn(record):
                     row_num = i + 2
+                    cells = []
                     for field_name, value in updates.items():
                         try:
                             col_index = headers.index(field_name) + 1
-                            worksheet.update_cell(row_num, col_index, value)
+                            cells.append({'range': gspread.utils.rowcol_to_a1(row_num, col_index), 'values': [[value]]})
                         except ValueError:
                             continue
+                    if cells:
+                        worksheet.batch_update(cells, value_input_option='USER_ENTERED')
                     log_api_call('write', table, source='google')
                     break
         except Exception as e:
