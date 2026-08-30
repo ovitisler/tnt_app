@@ -84,6 +84,10 @@ Remote is `https://ovitisler@github.com/ovitisler/tnt_app.git`. Needs a PAT:
 git push https://ovitisler:<PAT>@github.com/ovitisler/tnt_app.git main
 ```
 
+This is a personal repo — always use personal git settings, never HubSpot:
+- `git config user.email` should be `ovi.tisler@gmail.com` (already set locally)
+- Never use `--global` for git config changes here
+
 ## Testing
 Tests are in `tests/`. They mock gspread and all Google Sheets calls. No real sheet access needed.
 - Mock the function as imported in the route module, e.g. `@patch('routes.home.upsert_completed_section')`
