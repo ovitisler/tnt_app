@@ -158,7 +158,7 @@ def _insert_record(table: str, data: dict) -> dict:
         print(f"[SHEETS] ❌ Write failed for '{table}': {e}")
         return data
 
-    _cache.invalidate(table)
+    _cache.append_row(table, data)
     _refresh_related_tables(table)
     return data
 

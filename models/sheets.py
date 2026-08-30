@@ -23,7 +23,7 @@ BOOK_SECTIONS_SHEET = 'Book Sections'
 
 # Cache configuration - tiered TTLs based on how often data changes
 CACHE_TTL_STATIC = 86400    # 1 day - sheets that rarely change
-CACHE_TTL_DYNAMIC = 30     # 2 min - sheets that change with writes
+CACHE_TTL_DYNAMIC = 15     # 15s - sheets that change with writes
 
 # Stale-while-revalidate config
 REFRESH_DEBOUNCE_SECONDS = 5  # Don't refresh if we refreshed within this window

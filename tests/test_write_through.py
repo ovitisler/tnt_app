@@ -36,8 +36,8 @@ class TestInsertWriteThrough(unittest.TestCase):
 
         self.mock_worksheet.append_row.assert_called_once()
 
-    def test_insert_invalidates_cache(self):
-        """insert should invalidate cache after writing so next read fetches fresh data"""
+    def test_insert_appends_to_cache(self):
+        """insert should append row to cache after writing"""
         from models.data import insert_completed_section
 
         insert_completed_section({
@@ -45,7 +45,7 @@ class TestInsertWriteThrough(unittest.TestCase):
             'Team': 'Red',
         })
 
-        self.mock_cache.invalidate.assert_called_once_with('Completed Sections RAW')
+        self.mock_cache.append_row.assert_called_once_with('Completed Sections RAW', unittest.mock.ANY)
 
     def test_insert_refreshes_related_tables(self):
         """insert should trigger refresh for related tables"""
@@ -58,21 +58,21 @@ class TestInsertWriteThrough(unittest.TestCase):
 
         _trigger_background_refresh.assert_called_once_with('Completed Sections')
 
-    def test_insert_storage_before_cache_invalidation(self):
-        """insert should write to Google before invalidating cache"""
+    def test_insert_storage_before_cache_append(self):
+        """insert should write to Google before appending to cache"""
         from models.data import insert_completed_section
 
         call_order = []
 
         self.mock_worksheet.append_row.side_effect = lambda *a, **k: call_order.append('storage')
-        self.mock_cache.invalidate.side_effect = lambda *a, **k: call_order.append('invalidate')
+        self.mock_cache.append_row.side_effect = lambda *a, **k: call_order.append('append')
 
         insert_completed_section({
             'Name': 'Test Kid',
             'Team': 'Red',
         })
 
-        self.assertEqual(call_order, ['storage', 'invalidate'])
+        self.assertEqual(call_order, ['storage', 'append'])
 
     def test_insert_adds_timestamp(self):
         """insert should add timestamp if not present"""
