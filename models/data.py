@@ -103,7 +103,6 @@ def upsert_completed_section(data: dict) -> dict:
             if k in credit_fields and v == 'FALSE' and str(match.get(k, '')).upper() == 'TRUE':
                 continue
             updates[k] = v
-        updates[TIMESTAMP] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         _update_record(
             COMPLETED_SECTIONS_SHEET,
             lambda row: (
@@ -173,6 +172,7 @@ def _insert_record(table: str, data: dict) -> dict:
 
 def _update_record(table: str, match_fn, updates: dict) -> bool:
     """Update a record - cache first for fast UI, then async write to Google."""
+    updates = {**updates, TIMESTAMP: datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
     # Update cache immediately for fast UI response
     cache_updated = _cache.update_row(table, match_fn, updates)
 
