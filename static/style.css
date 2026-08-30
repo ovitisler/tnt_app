@@ -811,6 +811,13 @@ input:checked + .slider:before {
     font-family: inherit;
 }
 
+.submit-button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
 .submit-button:hover {
     transform: translateY(-1px);
     box-shadow: var(--shadow-md);
