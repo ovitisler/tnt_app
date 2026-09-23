@@ -3,7 +3,7 @@
 _simulate_rate_limit = False
 
 # Set to a 'YYYY-MM-DD' string to override today's date, or None to use real today
-DATE_OVERRIDE = None
+DATE_OVERRIDE = '2026-09-09'
 
 def set_simulate_rate_limit(enabled):
     """Enable/disable simulated rate limit errors for testing"""
