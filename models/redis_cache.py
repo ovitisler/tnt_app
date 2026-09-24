@@ -14,7 +14,7 @@ def _make_key(sheet_name: str) -> str:
 
 def _get_redis():
     import redis
-    return redis.from_url(os.environ['REDIS_URL'])
+    return redis.from_url(os.environ['REDIS_URL'], decode_responses=True)
 
 
 class RedisCacheManager:
