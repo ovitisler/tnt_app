@@ -13,11 +13,8 @@ def _make_key(sheet_name: str) -> str:
 
 
 def _get_redis():
-    from upstash_redis import Redis
-    return Redis(
-        url=os.environ['KV_REST_API_URL'],
-        token=os.environ['KV_REST_API_TOKEN']
-    )
+    import redis
+    return redis.from_url(os.environ['REDIS_URL'])
 
 
 class RedisCacheManager:
