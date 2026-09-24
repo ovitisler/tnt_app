@@ -75,7 +75,7 @@ def _refresh_sheet_background(sheet_name):
         if cached and cached.timestamp > refresh_started:
             print(f"[SHEETS] 🚫 Background refresh skipped for '{sheet_name}' - cache was updated during refresh")
         else:
-            _cache.set(sheet_name, data, size_bytes)
+            _cache.set(sheet_name, data, size_bytes, ttl=_get_ttl_for_sheet(sheet_name))
             log_api_call('read', sheet_name, size_bytes, source='google-bg')
     except APIError as e:
         if e.response.status_code == 429:
