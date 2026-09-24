@@ -1,11 +1,14 @@
 from datetime import datetime, date
+from zoneinfo import ZoneInfo
+
+_CHICAGO = ZoneInfo('America/Chicago')
 
 def get_today():
     """Return today's date, respecting DATE_OVERRIDE in test_mode if set."""
     from models.test_mode import DATE_OVERRIDE
     if DATE_OVERRIDE:
         return datetime.strptime(DATE_OVERRIDE, '%Y-%m-%d').date()
-    return date.today()
+    return datetime.now(_CHICAGO).date()
 
 
 def find_closest_date_url(schedule_data):
