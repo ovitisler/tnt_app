@@ -215,4 +215,5 @@ def get_metrics():
     metrics['cache_details'] = cache_info
     metrics['ttl_static'] = CACHE_TTL_STATIC
     metrics['ttl_dynamic'] = CACHE_TTL_DYNAMIC
+    metrics['cache_backend'] = _CACHE_BACKEND
     return metrics
