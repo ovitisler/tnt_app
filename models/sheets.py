@@ -54,6 +54,9 @@ def _get_ttl_for_sheet(sheet_name):
 # Cache manager instance
 _cache = CacheManager()
 
+# Set CACHE_ENABLED=true in Vercel env vars to re-enable in-memory caching
+_CACHE_ENABLED = os.environ.get('CACHE_ENABLED', 'false').lower() == 'true'
+
 
 def _refresh_sheet_background(sheet_name):
     """Background task to refresh a sheet's cache"""
@@ -135,17 +138,34 @@ def _get_spreadsheet_instance():
         _spreadsheet = get_spreadsheet()
     return _spreadsheet
 
+def _fetch_from_google(sheet_name):
+    """Fetch sheet data directly from Google Sheets, no cache."""
+    try:
+        spreadsheet = _get_spreadsheet_instance()
+        data = spreadsheet.worksheet(sheet_name).get_all_records()
+    except APIError as e:
+        if e.response.status_code == 429:
+            log_rate_limit_error(sheet_name)
+            raise RateLimitError()
+        raise
+    size_bytes = len(json.dumps(data).encode('utf-8'))
+    log_api_call('read', sheet_name, size_bytes, source='google')
+    return data, size_bytes
+
+
 def get_sheet_data(sheet_name):
     """
-    Get data from any sheet using stale-while-revalidate pattern.
-    - Always returns cached data immediately if available (even if stale)
-    - Triggers background refresh if cache is expired
-    - Only fetches synchronously on cold start (no cache at all)
+    Get data from any sheet. When CACHE_ENABLED=true uses stale-while-revalidate;
+    otherwise fetches directly from Google Sheets every time.
     """
     # Check for simulated rate limit (for testing)
     if get_simulate_rate_limit():
         log_rate_limit_error(sheet_name, simulated=True)
         raise RateLimitError()
+
+    if not _CACHE_ENABLED:
+        data, _ = _fetch_from_google(sheet_name)
+        return data
 
     # Check if we have cached data
     cached = _cache.get(sheet_name)
@@ -163,21 +183,8 @@ def get_sheet_data(sheet_name):
             return cached.data
 
     # Cold start - no cache at all, must fetch synchronously
-    try:
-        spreadsheet = _get_spreadsheet_instance()
-        data = spreadsheet.worksheet(sheet_name).get_all_records()
-    except APIError as e:
-        if e.response.status_code == 429:
-            log_rate_limit_error(sheet_name)
-            raise RateLimitError()
-        raise
-
-    size_bytes = len(json.dumps(data).encode('utf-8'))
-
-    # Store in cache
+    data, size_bytes = _fetch_from_google(sheet_name)
     _cache.set(sheet_name, data, size_bytes)
-
-    log_api_call('read', sheet_name, size_bytes, source='google')
     return data
 
 def get_worksheet(sheet_name):
