@@ -51,8 +51,15 @@ def _get_ttl_for_sheet(sheet_name):
         return CACHE_TTL_STATIC
     return CACHE_TTL_DYNAMIC
 
-# Cache manager instance
-_cache = CacheManager()
+# Set CACHE_BACKEND=redis in Vercel env vars to use shared Redis (Vercel KV / Upstash).
+# Defaults to 'memory' (in-process dict, original behavior).
+_CACHE_BACKEND = os.environ.get('CACHE_BACKEND', 'memory')
+
+if _CACHE_BACKEND == 'redis':
+    from models.redis_cache import RedisCacheManager
+    _cache = RedisCacheManager()
+else:
+    _cache = CacheManager()
 
 
 def _refresh_sheet_background(sheet_name):
@@ -173,9 +180,7 @@ def get_sheet_data(sheet_name):
         raise
 
     size_bytes = len(json.dumps(data).encode('utf-8'))
-
-    # Store in cache
-    _cache.set(sheet_name, data, size_bytes)
+    _cache.set(sheet_name, data, size_bytes, ttl=_get_ttl_for_sheet(sheet_name))
 
     log_api_call('read', sheet_name, size_bytes, source='google')
     return data
