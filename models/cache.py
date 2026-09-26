@@ -48,7 +48,7 @@ class CacheManager:
         """Check if a sheet is cached"""
         return sheet_name in self._cache
 
-    def set(self, sheet_name: str, data: List[Dict[str, Any]], size_bytes: int):
+    def set(self, sheet_name: str, data: List[Dict[str, Any]], size_bytes: int, ttl: int = None):
         """Create or replace a cache entry"""
         self._cache[sheet_name] = CacheEntry(
             data=data,

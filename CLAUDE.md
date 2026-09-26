@@ -78,6 +78,15 @@ Multiple rows can exist per (kid, section) across different dates. The UI merges
 - **Book Sections** — single column `Section`, master list of all sections
 - **Roster** — kids with their team (`Group` column)
 
+## Deployment
+Hosted on Vercel (serverless). Each request may hit a fresh instance with no warm state.
+
+**Caching** is controlled by `CACHE_BACKEND` env var:
+- `memory` (default) — in-process dict, works within a warm instance, lost on cold start
+- `redis` — Vercel Redis (`REDIS_URL`), shared across all instances, survives cold starts
+
+Cache TTLs: 86400s for static sheets (Schedule, Roster, Book Sections), 15s for dynamic sheets (Completed Sections, Attendance). Background refresh threads exist in the codebase but are unreliable in serverless — they fire but may not complete.
+
 ## Pushing to GitHub
 Remote is `https://ovitisler@github.com/ovitisler/tnt_app.git`. Needs a PAT:
 ```bash
