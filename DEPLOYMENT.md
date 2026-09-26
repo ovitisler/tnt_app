@@ -1,44 +1,53 @@
-# Deploying to Render
+# Deploying to Vercel
 
 ## Prerequisites
-1. A GitHub account with your repository pushed
-2. A Render account (sign up at https://render.com)
-3. Your Google Sheets credentials
+- GitHub account with the repo pushed
+- Vercel account connected to GitHub
+- Google Sheets service account credentials
 
-## Steps
+## First-time Setup
 
-1. **Sign up for Render**
-   - Go to https://render.com
-   - Sign up with your GitHub account
+1. **Import the project in Vercel**
+   - New Project → import `ovitisler/tnt_app`
+   - Framework: Other
+   - Build command: *(leave blank)*
+   - Output directory: *(leave blank)*
 
-2. **Create a New Web Service**
-   - Click "New +"
-   - Select "Web Service"
-   - Connect your GitHub repository
-   - Choose the repository with your TNT app
+2. **Set environment variables** (Vercel dashboard → Settings → Environment Variables)
 
-3. **Configure the Web Service**
-   - Name: `tnt-reading-tracker` (or your preferred name)
-   - Environment: `Python 3`
-   - Build Command: `pip install -r requirements.txt`
-   - Start Command: `gunicorn tnt:app`
-   - Select the free tier
+   | Variable | Value |
+   |---|---|
+   | `GOOGLE_SHEETS_CREDS` | Full contents of `client_secret.json` |
+   | `SHEET_NAME` | Your Google Sheet name (e.g. `TNT_App_Data`) |
+   | `CACHE_BACKEND` | `redis` (recommended) or `memory` |
 
-4. **Set Environment Variables**
-   In the Render dashboard, add these environment variables:
-   - `GOOGLE_SHEETS_CREDS`: Paste the entire contents of your client_secret.json
-   - `SHEET_NAME`: Your Google Sheet name (e.g., 'TNT_App_Data')
+3. **Set up Redis** (if using `CACHE_BACKEND=redis`)
+   - Vercel dashboard → Storage → Create → Redis
+   - Connect it to the project — this auto-adds `REDIS_URL`
 
-5. **Deploy**
-   - Click "Create Web Service"
-   - Render will automatically deploy your application
-   - You'll get a URL like `https://your-app-name.onrender.com`
+4. **Deploy** — Vercel deploys automatically on every push to `main`
 
-## Updating Your Application
-- Push changes to your GitHub repository
-- Render will automatically redeploy your application
+## Caching
 
-## Troubleshooting
-- Check the Render logs if the application fails to start
-- Verify your environment variables are set correctly
-- Ensure your Google Sheet is shared with the service account email 
+| `CACHE_BACKEND` | Behavior |
+|---|---|
+| `memory` | In-process dict. Fast, but cache is per-instance and lost on cold start. Default. |
+| `redis` | Vercel Redis. Shared across all serverless instances. Survives cold starts. Recommended for production. |
+
+Cache TTLs:
+- Static sheets (Schedule, Roster, Book Sections): 24 hours
+- Dynamic sheets (Completed Sections, Attendance): 15 seconds
+
+To flush the cache manually: `GET /test/cache/clear`
+
+## Updating
+
+Push to `main` — Vercel redeploys automatically. No build step needed.
+
+## Pushing from local
+
+The remote requires a GitHub PAT:
+
+```bash
+git push https://ovitisler:<PAT>@github.com/ovitisler/tnt_app.git main
+```

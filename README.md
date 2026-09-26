@@ -45,9 +45,13 @@ python tnt.py
 The app will be available at `http://localhost:5001`
 
 ## Environment Variables
-The following environment variables need to be set:
-- `GOOGLE_SHEETS_CREDS`: The contents of your client_secret.json file (for production)
-- `SHEET_NAME`: The name of your Google Sheet (default: 'TNT_App_Data')
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `GOOGLE_SHEETS_CREDS` | Yes (prod) | — | Contents of `client_secret.json` |
+| `SHEET_NAME` | No | `TNT_App_Data` | Google Sheet name |
+| `CACHE_BACKEND` | No | `memory` | `memory` (in-process) or `redis` (Vercel KV) |
+| `REDIS_URL` | If redis | — | Vercel Redis connection string (auto-set by Vercel) |
 
 ## Testing
 
@@ -57,7 +61,7 @@ pytest tests/ -q
 ```
 
 ## Deployment
-This application is configured for deployment on Render. See deployment instructions in DEPLOYMENT.md.
+Deployed on Vercel. See DEPLOYMENT.md for setup instructions.
 
 ## License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 
