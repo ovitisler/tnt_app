@@ -24,6 +24,7 @@ from datetime import datetime
 
 # Configuration
 BASE_URL = "http://localhost:5001"
+HEADERS = {}
 
 # Realistic page weights (what volunteers actually do)
 READ_PAGES = [
@@ -136,6 +137,8 @@ def simulate_volunteer(user_id, duration_seconds, stats, include_writes=False, w
     """Simulate a single volunteer browsing the app"""
     end_time = time.time() + duration_seconds
     session = requests.Session()
+    session.headers.update(HEADERS)
+    session.verify = False
 
     while time.time() < end_time:
         # Decide whether to read or write
@@ -152,7 +155,7 @@ def simulate_volunteer(user_id, duration_seconds, stats, include_writes=False, w
 def fetch_metrics():
     """Get current metrics from the app"""
     try:
-        response = requests.get(f"{BASE_URL}/metrics", timeout=5)
+        response = requests.get(f"{BASE_URL}/metrics", timeout=5, headers=HEADERS, verify=False)
         return response.json()
     except:
         return None
@@ -198,7 +201,7 @@ def run_load_test(num_users, duration_seconds, include_writes, write_ratio, min_
 
     # Check app is running
     try:
-        requests.get(f"{BASE_URL}/", timeout=5)
+        requests.get(f"{BASE_URL}/", timeout=15, headers=HEADERS, verify=False)
     except:
         print(f"❌ Error: Cannot connect to {BASE_URL}")
         print("   Make sure the app is running: python tnt.py")
@@ -311,9 +314,12 @@ if __name__ == "__main__":
     parser.add_argument("--include-writes", action="store_true", help="Include real write operations to test sheet")
     parser.add_argument("--write-ratio", type=float, default=0.2, help="Ratio of writes to total actions (default: 0.2 = 20%%)")
     parser.add_argument("--base-url", default=BASE_URL, help=f"Base URL (default: {BASE_URL})")
+    parser.add_argument("--bypass-secret", default=None, help="Vercel protection bypass secret")
 
     args = parser.parse_args()
     BASE_URL = args.base_url
+    if args.bypass_secret:
+        HEADERS['x-vercel-protection-bypass'] = args.bypass_secret
 
     run_load_test(
         num_users=args.users,
